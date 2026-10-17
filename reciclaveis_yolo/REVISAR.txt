@@ -1,0 +1,9 @@
+﻿REVISÃO DAS ANOTAÇÕES — concluída
+- 180 fotos conferidas visualmente (folhas de miniaturas com as caixas desenhadas).
+- 138 caixas automáticas (YOLO26x) conferidas e aceitas.
+- 25 caixas da 2ª passada automática conferidas; a da foto lata_aluminio_20261017_132113_305 estava errada e foi refeita.
+- 12 fotos anotadas manualmente (caixa estimada pela grade de coordenadas).
+- 5 fotos sem objeto visível (o objeto saiu do quadro): arquivo .txt vazio = exemplo de fundo.
+- 5 fotos mistas (copo na mão + lata): copo marcado como copo_plastico.
+- 1 garrafa de água tirada na categoria "lata": corrigida para garrafa_pet.
+Se quiser conferir no makesense: carregue fotos_para_anotar\ + Actions > Import Annotations > YOLO (anotacoes\*.txt + labels.txt).

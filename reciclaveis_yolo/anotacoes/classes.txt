@@ -1,0 +1,3 @@
+garrafa_pet
+copo_plastico
+lata_aluminio
