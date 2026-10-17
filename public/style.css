@@ -2,6 +2,7 @@
   --verde: #16a34a;
   --verde-claro: #dcfce7;
   --verde-escuro: #0b3d2e;
+  --marca-tech: #379b17;  /* "Tech" da logo */
   --vermelho: #dc2626;
   --vermelho-claro: #fee2e2;
   --amarelo: #d97706;
@@ -32,10 +33,15 @@ a { color: inherit; }
 
 .logo { display: flex; align-items: center; gap: 10px; font-weight: 800; font-size: 20px; letter-spacing: -.02em; text-decoration: none; }
 .logo .marca {
-  width: 36px; height: 36px; border-radius: 10px; display: grid; place-items: center;
-  background: linear-gradient(135deg, #22c55e, #0b3d2e); color: #fff; font-size: 20px;
+  width: 40px; height: 40px; border-radius: 11px; display: grid; place-items: center; flex: none;
+  background: #fff; padding: 3px; box-shadow: 0 0 0 1px var(--borda), 0 2px 6px rgba(16, 35, 27, .08);
 }
+.logo .marca img { width: 100%; height: 100%; object-fit: contain; display: block; }
+.logo .tc { color: var(--marca-tech); }
 .logo small { display: block; font-size: 11px; font-weight: 600; color: var(--muted); letter-spacing: .04em; text-transform: uppercase; }
+/* cabeçalhos escuros */
+.topo-escuro .logo .tc, .nav .logo .tc { color: #8bd94f; }
+.topo-escuro .logo .marca, .nav .logo .marca { box-shadow: none; }
 
 .topo {
   display: flex; align-items: center; justify-content: space-between; gap: 12px;

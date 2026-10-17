@@ -2,10 +2,13 @@ const express = require('express');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
+const https = require('https');
 const crypto = require('crypto');
 const QRCode = require('qrcode');
 
 const PORT = process.env.PORT || 3000;
+// HTTPS é necessário para o celular liberar a câmera ao vivo (scanner de QR) dentro do app
+const HTTPS_PORT = Number(process.env.HTTPS_PORT || 3443);
 const DB_FILE = process.env.DB_FILE || path.join(__dirname, 'data', 'db.json');
 const SESSAO_EXPIRA_MS = 120 * 1000; // segurança: libera a lixeira se a estação não responder
 const BONUS_DECLARACAO_CORRETA = 5;
@@ -13,7 +16,8 @@ const BONUS_DECLARACAO_CORRETA = 5;
 // Fatores aproximados (estimativa): peso médio por item e emissões evitadas pela reciclagem
 // (referência: EPA WARM — alumínio ~9 kgCO2e/kg, PET ~1,5 kgCO2e/kg).
 const MATERIAIS = {
-  pet: { id: 'pet', nome: 'Garrafa PET', plural: 'Garrafas PET', icone: '🧴', classes: ['bottle'], pesoKg: 0.025, co2PorKg: 1.5, pontos: 10 },
+  // PET aceita "cup": com o item caindo borrado, o modelo confunde garrafa e copo com frequência
+  pet: { id: 'pet', nome: 'Garrafa PET', plural: 'Garrafas PET', icone: '🧴', classes: ['bottle', 'cup'], pesoKg: 0.025, co2PorKg: 1.5, pontos: 10 },
   lata: { id: 'lata', nome: 'Lata de alumínio', plural: 'Latas de alumínio', icone: '🥫', classes: ['cup', 'bottle'], pesoKg: 0.014, co2PorKg: 9.0, pontos: 15 },
   copo: { id: 'copo', nome: 'Copo plástico', plural: 'Copos plásticos', icone: '🥤', classes: ['cup'], pesoKg: 0.004, co2PorKg: 1.5, pontos: 5 },
 };
@@ -138,16 +142,46 @@ function ipsLocais() {
   return ips.sort((a, b) => privado(b) - privado(a));
 }
 
-const baseUrl = () => process.env.PUBLIC_URL || `http://${ipsLocais()[0] || 'localhost'}:${PORT}`;
+// Certificado autoassinado para a rede local (gerado uma vez e reaproveitado)
+function certificado() {
+  const arquivo = path.join(path.dirname(DB_FILE), 'certificado.json');
+  try { return JSON.parse(fs.readFileSync(arquivo, 'utf8')); } catch {}
+  const selfsigned = require('selfsigned');
+  const altNames = [{ type: 2, value: 'localhost' }, ...['127.0.0.1', ...ipsLocais()].map((ip) => ({ type: 7, ip }))];
+  const pems = selfsigned.generate([{ name: 'commonName', value: 'RevitTech (rede local)' }], {
+    days: 825, keySize: 2048, algorithm: 'sha256',
+    extensions: [{ name: 'basicConstraints', cA: false }, { name: 'subjectAltName', altNames }],
+  });
+  const c = { key: pems.private, cert: pems.cert };
+  try {
+    fs.mkdirSync(path.dirname(arquivo), { recursive: true });
+    fs.writeFileSync(arquivo, JSON.stringify(c));
+  } catch (e) {
+    console.error('Não foi possível salvar o certificado:', e.message);
+  }
+  return c;
+}
+
+let httpsAtivo = false;
+const baseUrl = () => process.env.PUBLIC_URL
+  || (httpsAtivo ? `https://${ipsLocais()[0] || 'localhost'}:${HTTPS_PORT}` : `http://${ipsLocais()[0] || 'localhost'}:${PORT}`);
+const ehLocal = (host) => ['localhost', '127.0.0.1', '::1', '[::1]'].includes(host);
 
 // ---------- API ----------
 const app = express();
 app.use(express.json({ limit: '5mb' }));
+// Celular abrindo o app pelo endereço HTTP da rede → manda para a versão HTTPS (câmera ao vivo)
+app.use((req, res, next) => {
+  if (httpsAtivo && !req.secure && req.path === '/app.html' && !ehLocal(req.hostname)) {
+    return res.redirect(302, `https://${req.hostname}:${HTTPS_PORT}${req.originalUrl}`);
+  }
+  next();
+});
 app.use(express.static(path.join(__dirname, 'public')));
 app.use('/api', (req, res, next) => { expirarSessoesAntigas(); next(); });
 
 app.get('/api/config', (req, res) => {
-  res.json({ baseUrl: baseUrl(), ips: ipsLocais(), materiais: MATERIAIS, delegacoes: DELEGACOES, bonus: BONUS_DECLARACAO_CORRETA });
+  res.json({ baseUrl: baseUrl(), ips: ipsLocais(), httpsPort: httpsAtivo ? HTTPS_PORT : null, materiais: MATERIAIS, delegacoes: DELEGACOES, bonus: BONUS_DECLARACAO_CORRETA });
 });
 
 app.post('/api/usuarios', (req, res) => {
@@ -175,7 +209,8 @@ app.get('/api/lixeiras', (req, res) => {
 app.get('/api/lixeiras/:id/qrcode', async (req, res) => {
   const lix = db.lixeiras.find((l) => l.id === req.params.id);
   if (!lix) return res.status(404).end();
-  const png = await QRCode.toBuffer(`${baseUrl()}/app.html?lixeira=${lix.id}`, { width: 480, margin: 1, color: { dark: '#0b3d2e', light: '#ffffff' } });
+  // preto puro e borda de 4 módulos (especificação): mais fácil de ler em foto de tela
+  const png = await QRCode.toBuffer(`${baseUrl()}/app.html?lixeira=${lix.id}`, { width: 520, margin: 4, errorCorrectionLevel: 'M', color: { dark: '#000000', light: '#ffffff' } });
   res.type('png').send(png);
 });
 
@@ -309,11 +344,23 @@ app.get('/api/painel', (req, res) => {
   });
 });
 
+try {
+  https.createServer(certificado(), app)
+    .on('error', (e) => console.error(`HTTPS indisponível (${e.code || e.message}); o scanner ao vivo não funcionará no celular.`))
+    .listen(HTTPS_PORT, '0.0.0.0', () => { httpsAtivo = true; });
+} catch (e) {
+  console.error('HTTPS desativado:', e.message);
+}
+
 app.listen(PORT, '0.0.0.0', () => {
-  console.log('\n♻️  RevitTech rodando!');
-  console.log(`   Local:     http://localhost:${PORT}`);
-  for (const ip of ipsLocais()) console.log(`   Rede:      http://${ip}:${PORT}`);
-  console.log(`\n   Lixeira:   http://localhost:${PORT}/lixeira.html?id=GIN-01`);
-  console.log(`   Painel:    http://localhost:${PORT}/painel.html`);
-  console.log(`   App (QR):  ${baseUrl()}/app.html\n`);
+  setTimeout(() => {
+    console.log('\n♻️  RevitTech rodando!');
+    console.log(`   Local:     http://localhost:${PORT}`);
+    for (const ip of ipsLocais()) console.log(`   Rede:      http://${ip}:${PORT}`);
+    console.log(`\n   Lixeira:   http://localhost:${PORT}/lixeira.html?id=GIN-01`);
+    console.log(`   Painel:    http://localhost:${PORT}/painel.html`);
+    console.log(`   App (QR):  ${baseUrl()}/app.html`);
+    if (httpsAtivo) console.log('              (no celular, aceite o aviso de certificado uma vez: "Avançado" → "Continuar")');
+    console.log('');
+  }, 300);
 });

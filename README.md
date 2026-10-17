@@ -1,4 +1,8 @@
-# RevitTech ♻️
+<p align="center">
+  <img src="public/img/logo.png" alt="RevitTech — Tecnologia que renova o futuro." width="380">
+</p>
+
+# RevitTech
 
 **Lixeiras inteligentes com visão computacional para coleta seletiva, logística reversa e medição de impacto ambiental em grandes eventos esportivos.**
 
@@ -143,8 +147,8 @@ sequenceDiagram
 **Requisitos:** [Node.js](https://nodejs.org/) 18 ou superior, uma webcam e o navegador Chrome ou Edge.
 
 ```bash
-git clone https://github.com/<seu-usuario>/RevitTech.git
-cd RevitTech
+git clone https://github.com/LemosMoroni/RevitTECH.git
+cd RevitTECH
 npm install
 npm start
 ```
@@ -164,7 +168,13 @@ npm run offline   # baixa a IA (~67 MB) para public/vendor e permite rodar sem i
 npm test          # testes do rastreador de objetos
 ```
 
-**Usando no celular:** conecte o celular na mesma rede Wi-Fi do computador e escaneie o QR code da página inicial. O terminal também mostra o endereço da rede, por exemplo `http://192.168.0.10:3000`. No Windows, permita o Node.js no firewall quando o sistema pedir.
+**Usando no celular:** conecte o celular na mesma rede Wi-Fi do computador e escaneie o QR code da página inicial ou da lixeira. No Windows, permita o Node.js no firewall quando o sistema pedir.
+
+O app do celular roda em **HTTPS** (porta 3443), porque o navegador só libera a câmera ao vivo do scanner de QR em conexões seguras. O certificado é gerado automaticamente para a rede local, então o celular mostra um aviso na primeira vez:
+- **Android/Chrome:** toque em "Avançado" e depois em "Continuar para o site".
+- **iPhone/Safari:** toque em "Mostrar detalhes" e depois em "visitar este site".
+
+Quem abrir o endereço HTTP antigo é redirecionado automaticamente.
 
 ## Roteiro de demonstração
 
@@ -224,7 +234,9 @@ RevitTech/
 │   ├── rastreador.js    # rastreamento multi-objeto e decisão anti-fraude
 │   ├── painel.html/.js  # painel ESG e logística reversa
 │   ├── comum.js         # utilitários compartilhados
-│   └── style.css        # estilos
+│   ├── style.css        # estilos
+│   ├── favicon.ico
+│   └── img/             # logo, ícone e favicons
 ├── test/
 │   └── rastreador.test.js
 └── docs/img/            # capturas de tela

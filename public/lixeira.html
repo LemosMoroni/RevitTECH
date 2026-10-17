@@ -3,6 +3,9 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="icon" href="favicon.ico" sizes="any">
+  <link rel="icon" type="image/png" sizes="32x32" href="img/favicon-32.png">
+  <link rel="apple-touch-icon" href="img/apple-touch-icon.png">
   <title>RevitTech · Lixeira inteligente</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
@@ -52,7 +55,7 @@
     .aj-linha input[type=range] { width: 160px; accent-color: var(--verde); }
     .aj-linha input[type=checkbox] { width: 22px; height: 22px; accent-color: var(--verde); flex: none; }
     .aj-linha select { padding: 8px; border-radius: 8px; border: 1px solid var(--borda); }
-    .aj-stats { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; margin: 16px 0; }
+    .aj-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin: 16px 0; }
     .aj-stats div { background: var(--bg); border-radius: 10px; padding: 8px; text-align: center; }
     .aj-stats small { display: block; font-size: 11px; color: var(--muted); }
     .aj-stats b { font-size: 14px; font-variant-numeric: tabular-nums; }
@@ -71,7 +74,7 @@
     .estado.validando { background: linear-gradient(135deg, #2563eb, #1e3a8a); }
 
     #bloco-qr { text-align: center; }
-    #bloco-qr img { width: 100%; max-width: 220px; aspect-ratio: 1; border-radius: 12px; }
+    #bloco-qr img { width: 100%; max-width: 250px; aspect-ratio: 1; border-radius: 8px; }
     #bloco-qr .codigo { font-size: 22px; font-weight: 800; letter-spacing: .08em; margin-top: 6px; }
 
     .quem { display: flex; align-items: center; gap: 12px; margin-bottom: 14px; }
@@ -94,7 +97,7 @@
     .overlay .caixa { max-width: 520px; }
     .overlay h2 { font-size: 32px; margin: 12px 0 8px; }
     .overlay p { opacity: .85; margin-bottom: 24px; }
-    .overlay .grande { font-size: 72px; }
+    .overlay .logo-ativar { width: 300px; max-width: 80%; background: #fff; border-radius: 24px; padding: 20px 24px; box-shadow: 0 20px 50px rgba(0,0,0,.3); }
 
     @media (max-width: 900px) {
       body { height: auto; overflow: auto; }
@@ -103,8 +106,8 @@
   </style>
 </head>
 <body>
-  <header class="topo">
-    <a class="logo" href="index.html"><span class="marca">♻</span><span>RevitTech<small>Lixeira inteligente</small></span></a>
+  <header class="topo topo-escuro">
+    <a class="logo" href="index.html"><span class="marca"><img src="img/icone.png" alt=""></span><span>Revit<span class="tc">Tech</span><small>Lixeira inteligente</small></span></a>
     <div id="status-ia" class="status-ia"><span class="ponto"></span><span id="status-ia-txt">Carregando IA…</span></div>
     <div class="lixeira-nome"><b id="lix-nome">—</b><span id="lix-local"></span></div>
   </header>
@@ -161,7 +164,7 @@
 
   <div id="ativar" class="overlay">
     <div class="caixa">
-      <div class="grande">♻️</div>
+      <img class="logo-ativar" src="img/logo.png" alt="RevitTech — Tecnologia que renova o futuro.">
       <h2>Ativar lixeira inteligente</h2>
       <p>A câmera vai validar cada item depositado usando visão computacional (TensorFlow.js · COCO-SSD), rodando localmente no navegador.</p>
       <button class="btn" id="btn-ativar" style="font-size:20px;padding:18px 32px">📷 Ativar câmera</button>
@@ -181,7 +184,11 @@
       <input type="range" id="aj-conf" min="30" max="80" step="5">
     </div>
     <label class="aj-linha">
-      <div><b>Anti-fraude: exigir descida</b><small>Só conta se o item descer para dentro da lixeira. Mostrar e retirar não conta.</small></div>
+      <div><b>⚡ Passagem rápida (câmera na boca)</b><small>Detecta cada item que atravessa a boca pelo movimento, a 30–60 fps, e reanalisa os quadros guardados quando ele cai rápido demais para a IA ao vivo.</small></div>
+      <input type="checkbox" id="aj-movimento">
+    </label>
+    <label class="aj-linha">
+      <div><b>Anti-fraude: exigir descida</b><small>Só conta se o item atravessar a boca para baixo. Item que entra e volta não conta.</small></div>
       <input type="checkbox" id="aj-descida">
     </label>
     <label class="aj-linha">
@@ -209,6 +216,7 @@
   <script>window.cocoSsd || document.write('<script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/coco-ssd@2.2.3/dist/coco-ssd.min.js"><\/script>')</script>
   <script src="comum.js"></script>
   <script src="rastreador.js"></script>
+  <script src="movimento.js"></script>
   <script src="lixeira.js"></script>
 </body>
 </html>

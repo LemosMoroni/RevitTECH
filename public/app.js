@@ -111,28 +111,187 @@ $('form-codigo').onsubmit = (e) => {
   abrirLixeira($('codigo').value);
 };
 
-// Leitura de QR por foto: funciona no celular mesmo sem HTTPS
-$('btn-scan').onclick = () => $('arquivo-qr').click();
+// ---------- Leitura do QR da lixeira ----------
+// O botão abre a tela do scanner ao vivo (câmera dentro do app, lendo vários quadros por segundo).
+// A câmera ao vivo exige HTTPS (ou localhost); a foto continua como alternativa.
+$('btn-scan').onclick = () => abrirScanner();
+
+const qrCanvas = document.createElement('canvas');
+const qrCtx = qrCanvas.getContext('2d', { willReadFrequently: true });
+
+// Tons de cinza + estica o histograma (percentis 2–98%): recupera fotos de tela lavadas ou com reflexo
+function realcarContraste(px) {
+  const hist = new Uint32Array(256);
+  for (let i = 0; i < px.length; i += 4) {
+    const v = (px[i] * 77 + px[i + 1] * 150 + px[i + 2] * 29) >> 8;
+    px[i] = v;
+    hist[v]++;
+  }
+  const total = px.length / 4;
+  let acc = 0, lo = 0, hi = 255;
+  for (let v = 0; v < 256; v++) { acc += hist[v]; if (acc >= total * 0.02) { lo = v; break; } }
+  acc = 0;
+  for (let v = 255; v >= 0; v--) { acc += hist[v]; if (acc >= total * 0.02) { hi = v; break; } }
+  const k = 255 / Math.max(1, hi - lo);
+  for (let i = 0; i < px.length; i += 4) {
+    const v = Math.max(0, Math.min(255, (px[i] - lo) * k));
+    px[i] = px[i + 1] = px[i + 2] = v;
+  }
+}
+
+function lerQRRegiao(fonte, W, H, [rx, ry, rw, rh], lado, realcar) {
+  const sw = W * rw;
+  const sh = H * rh;
+  const esc = Math.min(1, lado / Math.max(sw, sh));
+  qrCanvas.width = Math.max(1, Math.round(sw * esc));
+  qrCanvas.height = Math.max(1, Math.round(sh * esc));
+  qrCtx.drawImage(fonte, W * rx, H * ry, sw, sh, 0, 0, qrCanvas.width, qrCanvas.height);
+  const d = qrCtx.getImageData(0, 0, qrCanvas.width, qrCanvas.height);
+  if (realcar) realcarContraste(d.data);
+  const qr = jsQR(d.data, qrCanvas.width, qrCanvas.height, { inversionAttempts: realcar ? 'dontInvert' : 'attemptBoth' });
+  return qr ? qr.data : null;
+}
+
+// Foto: tenta várias escalas e recortes (QR pequeno, grande, com reflexo de um lado...)
+function lerQRFoto(img) {
+  const W = img.width;
+  const H = img.height;
+  const recortes = [[0, 0, 1, 1], [0.15, 0.15, 0.7, 0.7], [0.25, 0.25, 0.5, 0.5], [0, 0, 1, 0.6], [0, 0.4, 1, 0.6], [0, 0, 0.6, 1], [0.4, 0, 0.6, 1]];
+  for (const lado of [1000, 1600, 650]) {
+    for (const realcar of [false, true]) {
+      for (const r of recortes) {
+        const texto = lerQRRegiao(img, W, H, r, lado, realcar);
+        if (texto) return texto;
+      }
+    }
+  }
+  return null;
+}
+
+async function carregarImagem(file) {
+  try { return await createImageBitmap(file); } catch {}
+  const url = URL.createObjectURL(file);
+  try {
+    const img = new Image();
+    img.src = url;
+    await img.decode();
+    return img;
+  } finally {
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  }
+}
+
 $('arquivo-qr').onchange = async (e) => {
   const file = e.target.files[0];
   e.target.value = '';
   if (!file) return;
+  toast('🔍 Lendo QR code…', 10000);
   try {
-    const img = await createImageBitmap(file);
-    const escala = Math.min(1, 1200 / Math.max(img.width, img.height));
-    const c = document.createElement('canvas');
-    c.width = Math.round(img.width * escala);
-    c.height = Math.round(img.height * escala);
-    const g = c.getContext('2d');
-    g.drawImage(img, 0, 0, c.width, c.height);
-    const dados = g.getImageData(0, 0, c.width, c.height);
-    const qr = jsQR(dados.data, c.width, c.height);
-    if (!qr) return toast('QR code não encontrado. Tente aproximar a câmera.');
-    abrirLixeira(extrairCodigo(qr.data));
+    const img = await carregarImagem(file);
+    await new Promise((r) => setTimeout(r, 30)); // deixa o aviso aparecer antes do processamento
+    const texto = lerQRFoto(img);
+    if (!texto) return toast('QR code não encontrado. Fotografe o código de frente, sem reflexo — ou toque na lixeira abaixo.', 5000);
+    toast('QR code lido ✓', 1200);
+    abrirLixeira(extrairCodigo(texto));
   } catch (err) {
-    toast('Não foi possível ler a imagem.');
+    toast('Não foi possível ler a imagem. Toque na lixeira abaixo.');
   }
 };
+
+// Scanner ao vivo
+let scanStream = null;
+let scanAtivo = false;
+let detectorNativo = null; // leitor de QR do próprio navegador (Android/Chrome), mais rápido que o jsQR
+
+if ('BarcodeDetector' in window) {
+  BarcodeDetector.getSupportedFormats?.()
+    .then((f) => { if (f.includes('qr_code')) detectorNativo = new BarcodeDetector({ formats: ['qr_code'] }); })
+    .catch(() => {});
+}
+
+function avisoScanner(texto, botao) {
+  $('scan-aviso').hidden = !texto;
+  $('scan-aviso-txt').textContent = texto || '';
+  $('scan-aviso-btn').hidden = !botao;
+  if (botao) {
+    $('scan-aviso-btn').textContent = botao.texto;
+    $('scan-aviso-btn').onclick = botao.acao;
+  }
+}
+
+async function abrirScanner() {
+  $('scanner').hidden = false;
+  avisoScanner('');
+  $('scan-status').textContent = 'Abrindo a câmera…';
+
+  if (!navigator.mediaDevices?.getUserMedia) {
+    // Endereço HTTP na rede: o navegador bloqueia a câmera ao vivo
+    const urlSegura = config?.httpsPort && location.protocol === 'http:'
+      ? `https://${location.hostname}:${config.httpsPort}${location.pathname}`
+      : null;
+    $('scan-status').textContent = '';
+    return avisoScanner(
+      'Por segurança, o navegador só libera a câmera ao vivo na versão segura (HTTPS) do app.',
+      urlSegura ? { texto: '🔒 Abrir versão segura', acao: () => { location.href = urlSegura; } } : null,
+    );
+  }
+
+  try {
+    scanStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: 'environment' }, width: { ideal: 1280 } }, audio: false });
+  } catch (e) {
+    $('scan-status').textContent = '';
+    const negado = e.name === 'NotAllowedError' || e.name === 'SecurityError';
+    return avisoScanner(negado
+      ? 'Permita o acesso à câmera: toque no ícone ao lado do endereço do site e libere "Câmera". Depois tente de novo.'
+      : `Não foi possível abrir a câmera (${e.name || e.message}).`,
+    { texto: 'Tentar de novo', acao: () => { fecharScanner(); abrirScanner(); } });
+  }
+  if ($('scanner').hidden) return fecharScanner(); // usuário cancelou enquanto a câmera abria
+
+  const v = $('scan-video');
+  v.srcObject = scanStream;
+  await v.play().catch(() => {});
+  $('scan-status').textContent = 'Procurando QR code…';
+  scanAtivo = true;
+  let n = 0;
+  const passo = async () => {
+    if (!scanAtivo) return;
+    let texto = null;
+    if (v.readyState >= 2 && v.videoWidth) {
+      try {
+        if (detectorNativo) {
+          const r = await detectorNativo.detect(v);
+          texto = r[0]?.rawValue || null;
+        }
+        if (!texto && (!detectorNativo || n % 3 === 2)) {
+          // jsQR: alterna recorte central e quadro inteiro, com e sem realce de contraste
+          const r = n % 2 ? [0, 0, 1, 1] : [0.2, 0.2, 0.6, 0.6];
+          texto = lerQRRegiao(v, v.videoWidth, v.videoHeight, r, 800, n % 4 >= 2);
+        }
+      } catch {}
+      n++;
+    }
+    if (texto && scanAtivo) {
+      fecharScanner();
+      if (navigator.vibrate) navigator.vibrate(60);
+      toast('QR code lido ✓', 1200);
+      return abrirLixeira(extrairCodigo(texto));
+    }
+    setTimeout(passo, 80);
+  };
+  passo();
+}
+
+function fecharScanner() {
+  scanAtivo = false;
+  $('scanner').hidden = true;
+  scanStream?.getTracks().forEach((t) => t.stop());
+  scanStream = null;
+  $('scan-video').srcObject = null;
+}
+
+$('scan-fechar').onclick = fecharScanner;
+$('scan-foto').onclick = () => { fecharScanner(); $('arquivo-qr').click(); };
 
 function extrairCodigo(texto) {
   try { return new URL(texto).searchParams.get('lixeira') || texto; } catch { return texto; }

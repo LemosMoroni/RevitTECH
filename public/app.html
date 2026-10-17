@@ -3,6 +3,9 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <link rel="icon" href="favicon.ico" sizes="any">
+  <link rel="icon" type="image/png" sizes="32x32" href="img/favicon-32.png">
+  <link rel="apple-touch-icon" href="img/apple-touch-icon.png">
   <meta name="theme-color" content="#0b3d2e">
   <title>RevitTech · App</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -15,6 +18,8 @@
     .cab { display: flex; align-items: center; justify-content: space-between; padding: 16px 0; }
     .cab .avatar { width: 40px; height: 40px; border-radius: 50%; background: var(--verde-escuro); color: #fff; display: grid; place-items: center; font-weight: 800; font-size: 14px; }
 
+    .logo-completa { text-align: center; padding: 24px 0 8px; }
+    .logo-completa img { width: 230px; max-width: 70%; }
     .hero { background: linear-gradient(150deg, #16a34a, #0b3d2e); color: #fff; border-radius: 24px; padding: 28px 22px; margin: 8px 0 18px; }
     .hero h1 { font-size: 28px; line-height: 1.15; letter-spacing: -.02em; }
     .hero p { opacity: .9; margin-top: 8px; }
@@ -34,6 +39,27 @@
 
     .scan { margin: 18px 0 10px; padding: 22px; font-size: 19px; border-radius: 18px; box-shadow: 0 8px 24px rgba(22,163,74,.35); }
     .ou { text-align: center; color: var(--muted); font-size: 13px; margin: 10px 0; }
+    .dica-scan { text-align: center; color: var(--muted); font-size: 12px; margin: -2px 0 6px; }
+
+    .scanner { position: fixed; inset: 0; z-index: 60; background: #000; }
+    .scanner video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+    .mira { position: absolute; left: 50%; top: 42%; width: min(70vw, 300px); aspect-ratio: 1; transform: translate(-50%, -50%); box-shadow: 0 0 0 9999px rgba(0,0,0,.45); border-radius: 18px; }
+    .mira i { position: absolute; width: 36px; height: 36px; border: 4px solid #4ade80; }
+    .mira i:nth-child(1) { left: 0; top: 0; border-right: 0; border-bottom: 0; border-top-left-radius: 18px; }
+    .mira i:nth-child(2) { right: 0; top: 0; border-left: 0; border-bottom: 0; border-top-right-radius: 18px; }
+    .mira i:nth-child(3) { left: 0; bottom: 0; border-right: 0; border-top: 0; border-bottom-left-radius: 18px; }
+    .mira i:nth-child(4) { right: 0; bottom: 0; border-left: 0; border-top: 0; border-bottom-right-radius: 18px; }
+    .scanner-rodape { position: absolute; left: 0; right: 0; bottom: 0; padding: 20px 16px 28px; text-align: center; color: #fff; background: linear-gradient(transparent, rgba(0,0,0,.75)); }
+    .scanner-rodape p { font-weight: 700; margin-bottom: 14px; }
+    .scanner-botoes { display: flex; gap: 10px; justify-content: center; }
+    .btn.fantasma.claro { color: #fff; border-color: rgba(255,255,255,.5); }
+    .scanner-topo { position: absolute; left: 0; right: 0; top: 0; padding: 18px 16px 30px; text-align: center; color: #fff; background: linear-gradient(rgba(0,0,0,.7), transparent); z-index: 1; }
+    .scanner-topo b { display: block; font-size: 18px; }
+    .scanner-topo span { font-size: 13px; opacity: .85; }
+    .linha-scan { position: absolute; left: 8%; right: 8%; height: 2px; background: #4ade80; box-shadow: 0 0 12px #4ade80; animation: varrer 2s ease-in-out infinite; }
+    @keyframes varrer { 0%, 100% { top: 10%; } 50% { top: 88%; } }
+    .scan-aviso { position: absolute; left: 16px; right: 16px; top: 50%; transform: translateY(-50%); background: #fff; color: var(--texto); border-radius: 18px; padding: 22px; text-align: center; z-index: 2; box-shadow: 0 20px 50px rgba(0,0,0,.4); }
+    .scan-aviso p { margin-bottom: 14px; font-weight: 600; }
     .chips { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; }
     .chip { padding: 8px 12px; border-radius: 999px; background: #fff; border: 1px solid var(--borda); font-size: 13px; font-weight: 600; }
     .linha-codigo { display: grid; grid-template-columns: 1fr auto; gap: 8px; margin-top: 10px; }
@@ -75,7 +101,7 @@
 
     <!-- Cadastro -->
     <section class="tela" id="tela-cadastro" hidden>
-      <div class="cab"><div class="logo"><span class="marca">♻</span><span>RevitTech<small>OLESC Sustentável</small></span></div></div>
+      <div class="logo-completa"><img src="img/logo.png" alt="RevitTech — Tecnologia que renova o futuro."></div>
       <div class="hero">
         <h1>Recicle, valide e some pontos para sua delegação 🏆</h1>
         <p>Cada garrafa, lata ou copo depositado nas lixeiras inteligentes vira pontos no ranking da OLESC.</p>
@@ -97,7 +123,7 @@
     <!-- Home -->
     <section class="tela" id="tela-home" hidden>
       <div class="cab">
-        <div class="logo"><span class="marca">♻</span><span>RevitTech<small id="h-delegacao">—</small></span></div>
+        <div class="logo"><span class="marca"><img src="img/icone.png" alt=""></span><span>Revit<span class="tc">Tech</span><small id="h-delegacao">—</small></span></div>
         <div class="avatar" id="h-avatar" title="Sair">?</div>
       </div>
       <div class="pontos">
@@ -106,6 +132,7 @@
       </div>
       <button class="btn bloco scan" id="btn-scan">📷 Escanear lixeira</button>
       <input type="file" id="arquivo-qr" accept="image/*" capture="environment" hidden>
+      <p class="dica-scan">💡 A câmera do próprio celular também lê o QR e abre o app direto na lixeira.</p>
       <div class="ou">ou escolha uma lixeira próxima</div>
       <div class="chips" id="chips-lixeiras"></div>
       <form class="linha-codigo" id="form-codigo">
@@ -166,6 +193,27 @@
       <p id="r-co2" style="margin-bottom:24px">—</p>
       <button class="btn bloco" id="btn-inicio">Voltar ao início</button>
     </section>
+  </div>
+
+  <!-- Scanner ao vivo -->
+  <div id="scanner" class="scanner" hidden>
+    <video id="scan-video" playsinline muted></video>
+    <div class="scanner-topo">
+      <b>Escanear lixeira</b>
+      <span id="scan-status"></span>
+    </div>
+    <div class="mira"><i></i><i></i><i></i><i></i><span class="linha-scan"></span></div>
+    <div id="scan-aviso" class="scan-aviso" hidden>
+      <p id="scan-aviso-txt"></p>
+      <button class="btn" id="scan-aviso-btn" type="button" hidden></button>
+    </div>
+    <div class="scanner-rodape">
+      <p>Aponte para o QR code da lixeira</p>
+      <div class="scanner-botoes">
+        <button class="btn fantasma claro" id="scan-foto" type="button">📷 Tirar foto</button>
+        <button class="btn" id="scan-fechar" type="button">Cancelar</button>
+      </div>
+    </div>
   </div>
 
   <div id="toast" class="toast"></div>

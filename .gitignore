@@ -19,3 +19,15 @@ Thumbs.db
 desktop.ini
 .vscode/
 .idea/
+
+# Ambientes virtuais Python (ex.: reciclaveis_yolo/.venv)
+.venv/
+__pycache__/
+
+# Pesos de modelos YOLO e resultados de treino (arquivos grandes)
+*.pt
+runs/
+
+# Cópias geradas pelos scripts do reciclaveis_yolo (as originais ficam em fotos/ e anotacoes/)
+reciclaveis_yolo/dataset/
+reciclaveis_yolo/fotos_para_anotar/

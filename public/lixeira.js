@@ -13,7 +13,8 @@ const RECICLAVEIS = ['bottle', 'cup'];
 // ---------- Configuração da visão (salva por lixeira) ----------
 const CFG_KEY = `revittech_visao_${ID}`;
 // zona: null = automática (quadrado central: sem distorção na entrada 300×300 do modelo e com zoom)
-const CFG_PADRAO = { zona: null, confianca: 0.45, exigirDescida: true, tecnico: false };
+// movimento: gatilho por passagem (câmera na boca da lixeira, itens caindo rápido)
+const CFG_PADRAO = { zona: null, confianca: 0.45, exigirDescida: true, tecnico: false, movimento: true };
 
 function carregarCfg() {
   try {
@@ -57,6 +58,33 @@ let ultimoFrame = performance.now();
 let editandoZona = false;
 let zonaRascunho = null;
 
+// ---------- Passagem rápida: movimento + buffer de quadros ----------
+const LADO_MOV = 64;
+const LADO_BUFFER = 480;     // resolução dos quadros guardados para reanálise
+const TAM_BUFFER = 24;       // ~0,8 s a 30 fps
+const QUADROS_REANALISE = 5; // quadros do buffer analisados quando a IA ao vivo não pegou o item
+const mov = new DetectorMovimento({ lado: LADO_MOV });
+const cinzaCv = document.createElement('canvas');
+cinzaCv.width = cinzaCv.height = LADO_MOV;
+const cctx = cinzaCv.getContext('2d', { willReadFrequently: true });
+const cinza = new Uint8Array(LADO_MOV * LADO_MOV);
+const buffer = Array.from({ length: TAM_BUFFER }, () => {
+  const c = document.createElement('canvas');
+  return { canvas: c, ctx: c.getContext('2d'), t: 0, fracao: 0, nitidez: 0 };
+});
+let posBuffer = 0;
+let movAtual = { fracao: 0, caixa: null };
+let tsAoVivo = [];            // instantes dos quadros já analisados ao vivo
+let janelasPassagem = [];     // passagens recentes: o rastreador não conta de novo
+let filaModelo = Promise.resolve();
+
+// Fila única para o modelo: detecção ao vivo e reanálise do buffer não concorrem
+function detectar(fonte) {
+  const p = filaModelo.then(() => model.detect(fonte, 20, 0.2));
+  filaModelo = p.catch(() => {});
+  return p;
+}
+
 // ---------- Inicialização ----------
 $('qr').src = `/api/lixeiras/${ID}/qrcode`;
 $('codigo').textContent = ID;
@@ -86,7 +114,7 @@ $('codigo').textContent = ID;
 $('btn-ativar').onclick = async () => {
   try {
     audio = new (window.AudioContext || window.webkitAudioContext)();
-    const stream = await navigator.mediaDevices.getUserMedia({ video: { width: { ideal: 1280 }, height: { ideal: 720 } }, audio: false });
+    const stream = await navigator.mediaDevices.getUserMedia({ video: { width: { ideal: 1280 }, height: { ideal: 720 }, frameRate: { ideal: 60 } }, audio: false });
     video.srcObject = stream;
     await video.play();
     canvas.width = video.videoWidth;
@@ -96,6 +124,7 @@ $('btn-ativar').onclick = async () => {
     $('video-box').style.maxWidth = `calc((100vh - 120px) * ${ar})`;
     $('ativar').hidden = true;
     requestAnimationFrame(loop);
+    agendarQuadro();
   } catch (e) {
     console.error(e);
     toast('Não foi possível acessar a câmera: ' + e.message, 5000);
@@ -135,14 +164,16 @@ async function loop() {
       if (recorte.width !== rw || recorte.height !== rh) { recorte.width = rw; recorte.height = rh; }
       rctx.drawImage(video, z.x, z.y, z.w, z.h, 0, 0, rw, rh);
 
-      // 2) Detecção
+      // 2) Detecção (pela fila única do modelo)
+      const tCaptura = Date.now();
       const t0 = performance.now();
-      const preds = await model.detect(recorte, 20, 0.2);
+      const preds = await detectar(recorte);
       inferMs = inferMs ? inferMs * 0.8 + (performance.now() - t0) * 0.2 : performance.now() - t0;
       const k = 1 / escala;
       ultimasDets = preds.map((p) => ({ class: p.class, score: p.score, bbox: [z.x + p.bbox[0] * k, z.y + p.bbox[1] * k, p.bbox[2] * k, p.bbox[3] * k] }));
+      registrarAoVivo(preds.map((p) => ({ t: tCaptura, class: p.class, score: p.score, bbox: [p.bbox[0] / rw, p.bbox[1] / rh, p.bbox[2] / rw, p.bbox[3] / rh] })), tCaptura);
 
-      // 3) Rastreamento + decisão
+      // 3) Rastreamento (visual + reserva quando o gatilho por movimento não disparar)
       const ativa = sessao && !finalizando;
       const { trilhas, finalizados } = rastreador.atualizar(ultimasDets, z, Date.now(), ativa ? alvo : null);
       desenhar(trilhas, z);
@@ -150,7 +181,7 @@ async function loop() {
         for (const t of trilhas) {
           if (!t.snapshot && t.vistoAgora && rastreador.confirmada(t) && alvo.includes(rastreador.classe(t).classe)) t.snapshot = capturar();
         }
-        for (const f of finalizados) tratarFinalizado(f);
+        for (const f of finalizados) if (!cobertoPorPassagem(f.trilha)) tratarFinalizado(f);
       }
     } catch (e) { console.error(e); }
 
@@ -158,7 +189,8 @@ async function loop() {
     fps = fps * 0.85 + (1000 / (agora - ultimoFrame)) * 0.15;
     ultimoFrame = agora;
     const alvoTxt = sessao ? ` · procurando: ${alvo.map((c) => NOMES[c] || c).join(', ')}` : '';
-    $('hud').textContent = `${fmtNum(fps)} fps · ${fmtNum(inferMs)} ms · ${rastreador.trilhas.length} objeto(s)${alvoTxt}`;
+    const movTxt = mov.evento ? ' · ⚡ passagem' : '';
+    $('hud').textContent = `IA ${fmtNum(fps)} fps · ${fmtNum(inferMs)} ms · câmera ${fmtNum(fpsCamera)} fps${movTxt}${alvoTxt}`;
     if ($('dlg-ajustes').open) atualizarStats();
   }
   if (sessao && !finalizando) atualizarTempo();
@@ -189,6 +221,16 @@ function desenhar(trilhas, z) {
   ctx.textAlign = 'center';
   ctx.fillText('ZONA DE DEPÓSITO', zx + z.w / 2, z.y + fonte + 6);
   ctx.textAlign = 'left';
+
+  // Área em movimento (passagem em andamento)
+  if (movAtual.caixa && (mov.evento || cfg.tecnico)) {
+    const [cx, cy, cw, ch] = movAtual.caixa;
+    ctx.setLineDash([6, 6]);
+    ctx.lineWidth = 2;
+    ctx.strokeStyle = 'rgba(56,189,248,.9)';
+    ctx.strokeRect(espX(z.x + cx * z.w, cw * z.w), z.y + cy * z.h, cw * z.w, ch * z.h);
+    ctx.setLineDash([]);
+  }
 
   if (zonaRascunho) {
     const r = zonaRascunho;
@@ -253,6 +295,164 @@ function desenhar(trilhas, z) {
     ctx.fillText(label, mx + 8, ly + th - 9);
     ctx.globalAlpha = 1;
   }
+}
+
+// ---------- Passagem rápida: roda em todo quadro da câmera ----------
+let fpsCamera = 0;
+let ultimoQuadroCam = 0;
+
+function agendarQuadro() {
+  if (video.requestVideoFrameCallback) video.requestVideoFrameCallback(aoQuadro);
+  else requestAnimationFrame(aoQuadro);
+}
+
+function aoQuadro() {
+  try {
+    if (video.readyState >= 2 && video.videoWidth) {
+      const t = Date.now();
+      if (ultimoQuadroCam) fpsCamera = fpsCamera * 0.9 + (1000 / Math.max(1, t - ultimoQuadroCam)) * 0.1;
+      ultimoQuadroCam = t;
+
+      // guarda o recorte da zona no buffer circular
+      const z = zonaPx();
+      const esc = Math.min(1, LADO_BUFFER / Math.max(z.w, z.h));
+      const bw = Math.round(z.w * esc);
+      const bh = Math.round(z.h * esc);
+      const slot = buffer[posBuffer];
+      posBuffer = (posBuffer + 1) % TAM_BUFFER;
+      if (slot.canvas.width !== bw || slot.canvas.height !== bh) { slot.canvas.width = bw; slot.canvas.height = bh; }
+      slot.ctx.drawImage(video, z.x, z.y, z.w, z.h, 0, 0, bw, bh);
+      slot.t = t;
+
+      // movimento em 64×64 tons de cinza — lido direto do vídeo num canvas de CPU
+      // (ler de um canvas de GPU obrigaria a esperar a inferência da IA terminar)
+      cctx.drawImage(video, z.x, z.y, z.w, z.h, 0, 0, LADO_MOV, LADO_MOV);
+      const px = cctx.getImageData(0, 0, LADO_MOV, LADO_MOV).data;
+      for (let i = 0, j = 0; i < cinza.length; i++, j += 4) cinza[i] = (px[j] * 77 + px[j + 1] * 150 + px[j + 2] * 29) >> 8;
+      const r = mov.processar(cinza, t);
+      slot.fracao = r.fracao;
+      slot.nitidez = nitidezQuadro(cinza, LADO_MOV, r.caixa);
+      movAtual = r;
+      if (r.finalizado) passagemFinalizada(r.finalizado);
+    }
+  } catch (e) { console.error(e); }
+  agendarQuadro();
+}
+
+// Detecções ao vivo entram na passagem em andamento (ou recém-terminada)
+function registrarAoVivo(dets, t) {
+  tsAoVivo.push(t);
+  if (tsAoVivo.length > 60) tsAoVivo.shift();
+  const ev = mov.evento;
+  if (ev && t >= ev.inicio - 100) ev.dets.push(...dets);
+  for (const p of passagensPendentes) if (t >= p.inicio - 100 && t <= p.fim + 80) p.dets.push(...dets);
+}
+
+const passagensPendentes = [];
+
+function cobertoPorPassagem(trilha) {
+  if (!cfg.movimento) return false;
+  if (mov.evento) return true; // passagem em andamento decidirá
+  return janelasPassagem.some((j) => trilha.inicio <= j.fim + 800 && trilha.ultimaVez >= j.inicio - 300);
+}
+
+function passagemFinalizada(ev) {
+  janelasPassagem.push({ inicio: ev.inicio, fim: ev.fim });
+  janelasPassagem = janelasPassagem.filter((j) => Date.now() - j.fim < 15000);
+  if (!cfg.movimento || !sessao || finalizando) return;
+
+  // copia já os melhores quadros da passagem (o buffer continua sendo sobrescrito):
+  // os mais nítidos entre os que mostram boa parte do item (no início da queda ele está mais lento)
+  const daPassagem = buffer.filter((s) => s.t >= ev.inicio - 70 && s.t <= ev.fim + 10 && s.fracao >= mov.o.fracFim);
+  const maxF = Math.max(0, ...daPassagem.map((s) => s.fracao));
+  const pontuar = (s) => (s.nitidez || 0) * Math.min(1, s.fracao / (0.4 * maxF || 1));
+  const candidatos = daPassagem.sort((a, b) => pontuar(b) - pontuar(a));
+  ev.quadros = [];
+  for (const s of candidatos) {
+    if (ev.quadros.length >= QUADROS_REANALISE + 1) break;
+    if (ev.quadros.some((q) => Math.abs(q.t - s.t) < 40)) continue;
+    const c = document.createElement('canvas');
+    c.width = s.canvas.width;
+    c.height = s.canvas.height;
+    c.getContext('2d').drawImage(s.canvas, 0, 0);
+    ev.quadros.push({ canvas: c, t: s.t, fracao: s.fracao });
+  }
+  passagensPendentes.push(ev);
+  analisarPassagem(ev);
+}
+
+async function analisarPassagem(ev) {
+  const sessaoId = sessao?.id;
+  try {
+    await filaModelo; // a detecção ao vivo em andamento pode conter o item
+    const norm = (c) => (c === 'wine glass' ? 'cup' : c);
+    const temAlvo = () => ev.dets.some((d) => alvo.includes(norm(d.class)) && d.score >= cfg.confianca * 0.85);
+
+    // A IA ao vivo não pegou o item (caiu rápido demais)? Reanalisa os quadros guardados.
+    let reanalisados = 0;
+    for (const q of ev.quadros) {
+      if (temAlvo()) break; // caminho rápido: a IA ao vivo já reconheceu o item
+      if (tsAoVivo.some((t) => Math.abs(t - q.t) < 12)) continue;
+      const preds = await detectar(q.canvas);
+      reanalisados++;
+      const { width: w, height: h } = q.canvas;
+      for (const p of preds) ev.dets.push({ t: q.t, class: p.class, score: p.score, bbox: [p.bbox[0] / w, p.bbox[1] / h, p.bbox[2] / w, p.bbox[3] / h], quadro: q });
+    }
+
+    window.__ultimaPassagem = ev; // depuração (modo técnico / testes)
+    if (!sessao || sessao.id !== sessaoId || finalizando) return;
+    // passagem já confirmada pelo movimento: aceita confiança um pouco menor (itens caindo ficam borrados)
+    const r = decidirPassagem(ev, alvo, { confianca: cfg.confianca * 0.85, exigirDescida: cfg.exigirDescida });
+    tratarPassagem(ev, r, Date.now() - ev.fim, reanalisados);
+  } catch (e) {
+    console.error(e);
+  } finally {
+    const i = passagensPendentes.indexOf(ev);
+    if (i >= 0) passagensPendentes.splice(i, 1);
+  }
+}
+
+function tratarPassagem(ev, r, latencia, reanalisados) {
+  const nome = NOMES[r.classe] || r.classe;
+  const pct = Math.round((r.score || 0) * 100);
+  const rapido = `⚡ ${fmtNum(latencia)} ms${reanalisados ? ` · ${reanalisados} quadro(s) do buffer` : ''}`;
+  if (r.decisao === 'contado') {
+    cont.snapshot = evidencia(ev, r.melhor) || cont.snapshot;
+    evento('ok', '✓', `${r.quantidade > 1 ? `${r.quantidade}× ` : ''}${nome} entrou na lixeira · ${pct}% · ${rapido}`);
+    contar(r.quantidade);
+  } else if (r.decisao === 'retirado') {
+    evento('alerta', '↩', `${nome} entrou e voltou: não conta · ${rapido}`);
+    piscar('✕', 'neg');
+    som('aviso');
+  } else if (r.decisao === 'material') {
+    evento('erro', '✕', `${nome}: não é ${sessao.materialInfo.nome.toLowerCase()} · ${rapido}`);
+    piscar('✕', 'neg');
+    som('aviso');
+  } else if (ev.maxFracao >= 0.03 && ev.fim - ev.inicio >= 120) {
+    evento('info', '?', `Movimento sem item reconhecido · ${rapido}`);
+  }
+}
+
+// Foto de evidência: o quadro da passagem em que o item aparece, com a caixa da detecção
+function evidencia(ev, det) {
+  const q = det?.quadro
+    || ev.quadros?.slice().sort((a, b) => Math.abs(a.t - (det?.t ?? 0)) - Math.abs(b.t - (det?.t ?? 0)))[0];
+  if (!q) return null;
+  const c = document.createElement('canvas');
+  c.width = q.canvas.width;
+  c.height = q.canvas.height;
+  const g = c.getContext('2d');
+  g.drawImage(q.canvas, 0, 0);
+  if (det) {
+    const [x, y, w, h] = det.bbox;
+    g.lineWidth = Math.max(3, c.width / 120);
+    g.strokeStyle = '#22c55e';
+    g.strokeRect(x * c.width, y * c.height, w * c.width, h * c.height);
+    g.font = `700 ${Math.round(c.width / 22)}px Inter, system-ui, sans-serif`;
+    g.fillStyle = '#22c55e';
+    g.fillText(`${NOMES[det.class] || det.class} ${Math.round(det.score * 100)}%`, x * c.width + 6, Math.max(20, y * c.height - 8));
+  }
+  return c.toDataURL('image/jpeg', 0.75);
 }
 
 // ---------- Decisões do rastreador ----------
@@ -379,6 +579,7 @@ function abrirAjustes() {
   $('aj-conf-val').textContent = `${Math.round(cfg.confianca * 100)}%`;
   $('aj-descida').checked = cfg.exigirDescida;
   $('aj-tecnico').checked = cfg.tecnico;
+  $('aj-movimento').checked = cfg.movimento;
   $('aj-modelo').value = params.get('modelo') === 'lite' ? 'lite' : '';
   atualizarStats();
   $('dlg-ajustes').showModal();
@@ -388,9 +589,10 @@ function atualizarStats() {
   const z = video.videoWidth ? zonaPx() : null;
   $('aj-stats').innerHTML = [
     ['Backend', typeof tf !== 'undefined' ? tf.getBackend() : '—'],
-    ['Câmera', video.videoWidth ? `${video.videoWidth}×${video.videoHeight}` : 'desligada'],
+    ['Resolução', video.videoWidth ? `${video.videoWidth}×${video.videoHeight}` : 'desligada'],
     ['Zoom da zona', z ? `${fmtNum(video.videoWidth / z.w, 1)}×` : '—'],
-    ['Velocidade', `${fmtNum(fps)} fps`],
+    ['Câmera', `${fmtNum(fpsCamera)} fps`],
+    ['IA', `${fmtNum(fps)} fps`],
     ['Inferência', `${fmtNum(inferMs)} ms`],
   ].map(([k, v]) => `<div><small>${k}</small><b>${v}</b></div>`).join('');
 }
@@ -403,6 +605,7 @@ $('aj-conf').oninput = (e) => {
 };
 $('aj-descida').onchange = (e) => { cfg.exigirDescida = e.target.checked; salvarCfg(); };
 $('aj-tecnico').onchange = (e) => { cfg.tecnico = e.target.checked; salvarCfg(); };
+$('aj-movimento').onchange = (e) => { cfg.movimento = e.target.checked; salvarCfg(); };
 $('aj-modelo').onchange = (e) => {
   if (e.target.value) params.set('modelo', e.target.value); else params.delete('modelo');
   location.search = params.toString();
@@ -441,7 +644,7 @@ function iniciarSessao(s) {
   $('s-declarado').textContent = s.declarado;
   renderEventos();
   $('video-box').classList.add('liberada');
-  $('faixa').textContent = 'Passe cada item pela zona e solte dentro da lixeira';
+  $('faixa').textContent = 'Solte um item de cada vez pela boca da lixeira';
   som('abrir');
 }
 

@@ -3,6 +3,9 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="icon" href="favicon.ico" sizes="any">
+  <link rel="icon" type="image/png" sizes="32x32" href="img/favicon-32.png">
+  <link rel="apple-touch-icon" href="img/apple-touch-icon.png">
   <meta name="theme-color" content="#0b3d2e">
   <title>RevitTech</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -82,7 +85,8 @@
     .perfil .btn.azul { background: #2563eb; }
     .perfil .btn.escuro { background: #0b3d2e; }
 
-    footer { text-align: center; color: var(--muted); font-size: 13px; padding: 48px 20px 32px; }
+    footer { text-align: center; color: var(--muted); font-size: 13px; padding: 56px 20px 32px; }
+    .logo-rodape { width: 200px; display: block; margin: 0 auto 14px; }
 
     @media (max-width: 900px) {
       .hero .wrap { grid-template-columns: 1fr; gap: 32px; }
@@ -105,7 +109,7 @@
 <body>
   <nav class="nav">
     <div class="wrap">
-      <a class="logo" href="index.html"><span class="marca">♻</span><span>RevitTech<small>OLESC Sustentável</small></span></a>
+      <a class="logo" href="index.html"><span class="marca"><img src="img/icone.png" alt=""></span><span>Revit<span class="tc">Tech</span><small>OLESC Sustentável</small></span></a>
       <div class="nav-links">
         <a href="#como">Como funciona</a>
         <a href="#perfis">Acessos</a>
@@ -118,7 +122,7 @@
   <header class="hero">
     <div class="wrap">
       <div>
-        <span class="tag">♻️ Lixeiras inteligentes da OLESC</span>
+        <span class="tag">🌱 Tecnologia que renova o futuro</span>
         <h1>Jogou no lugar certo?<br><span>Ganhou ponto.</span></h1>
         <p>Escaneie a lixeira, diga o que vai descartar e a câmera confere. Cada item validado vira pontos para a sua delegação.</p>
         <div class="ctas">
@@ -206,7 +210,10 @@
     </div>
   </section>
 
-  <footer>RevitTech · protótipo do Hackathon OLESC · a IA (TensorFlow.js · COCO-SSD) roda localmente no navegador da lixeira</footer>
+  <footer>
+    <img src="img/logo.png" alt="RevitTech — Tecnologia que renova o futuro." class="logo-rodape">
+    <p>Lixeiras inteligentes da OLESC · protótipo do Hackathon OLESC · a IA (TensorFlow.js · COCO-SSD) roda localmente no navegador da lixeira</p>
+  </footer>
 
   <script src="comum.js"></script>
   <script>
