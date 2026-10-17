@@ -90,6 +90,53 @@
     .top-atletas ol { list-style: none; display: grid; gap: 6px; font-size: 14px; }
     .top-atletas li { display: flex; justify-content: space-between; gap: 8px; }
 
+    /* Parede de câmeras (ilustrativa): cena em SVG + HUD em HTML por cima */
+    .cameras { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 12px; }
+    .cam { position: relative; aspect-ratio: 16 / 9; border-radius: 14px; overflow: hidden; background: #0c1512; border: 2px solid #22302a; color: #e6f2ec; transition: border-color .3s, box-shadow .3s; }
+    .cam.em-uso { border-color: #22c55e; box-shadow: 0 0 0 3px rgba(34,197,94,.25); }
+    .cam.cheia { border-color: #ef4444; }
+    .cam svg { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+    .cam .foto-real { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+    .cam::after { content: ''; position: absolute; inset: 0; pointer-events: none; z-index: 2;
+      background: repeating-linear-gradient(0deg, rgba(255,255,255,.035) 0 1px, transparent 1px 3px),
+                  radial-gradient(ellipse at center, transparent 55%, rgba(0,0,0,.45)); }
+    .cam .hud { position: absolute; z-index: 3; font-size: 11px; font-weight: 700; letter-spacing: .04em; text-shadow: 0 1px 2px rgba(0,0,0,.8); display: flex; align-items: center; gap: 6px; }
+    .cam .hud.te { top: 8px; left: 10px; }
+    .cam .hud.td { top: 8px; right: 10px; font-variant-numeric: tabular-nums; font-weight: 600; }
+    .cam .hud.be { bottom: 8px; left: 10px; flex-direction: column; align-items: flex-start; gap: 0; }
+    .cam .hud.be b { font-size: 13px; letter-spacing: 0; }
+    .cam .hud.be small { font-weight: 500; opacity: .85; letter-spacing: 0; }
+    .cam .hud.bd { bottom: 8px; right: 10px; }
+    .cam .rec i { width: 8px; height: 8px; border-radius: 50%; background: #ef4444; display: inline-block; animation: piscar-rec 1.2s steps(2) infinite; }
+    @keyframes piscar-rec { 50% { opacity: .2; } }
+    .cam .selo-sim { font-size: 9px; font-weight: 700; letter-spacing: .08em; padding: 2px 6px; border-radius: 4px; background: rgba(255,255,255,.14); }
+    .cam .selo-sim.real { background: rgba(34,197,94,.85); color: #062b16; text-shadow: none; }
+    .cam .chip { font-size: 10px; padding: 3px 7px; border-radius: 999px; text-shadow: none; }
+    .cam .chip.ok { background: rgba(34,197,94,.9); color: #062b16; }
+    .cam .chip.alerta { background: rgba(245,158,11,.95); color: #3b2300; }
+    .cam .chip.erro { background: rgba(239,68,68,.95); color: #fff; }
+    .cam .chip.info { background: rgba(59,130,246,.95); color: #fff; }
+
+    /* animação do item caindo na boca da lixeira, com a caixa de detecção acompanhando */
+    .cam .item { animation: cair var(--dur, 6s) var(--atraso, 0s) infinite; }
+    .cam .det { animation: mostrar-det var(--dur, 6s) var(--atraso, 0s) infinite; }
+    .cam .mais1 { animation: mais-um var(--dur, 6s) var(--atraso, 0s) infinite; }
+    @keyframes cair {
+      0%   { transform: translateY(-80px); opacity: 0; animation-timing-function: linear; }
+      10%  { transform: translateY(-60px); opacity: 1; animation-timing-function: ease-in; }
+      52%  { transform: translateY(98px);  opacity: 1; }
+      60%  { transform: translateY(120px); opacity: 0; }
+      100% { transform: translateY(120px); opacity: 0; }
+    }
+    @keyframes mostrar-det { 0%, 16% { opacity: 0; } 20%, 50% { opacity: 1; } 54%, 100% { opacity: 0; } }
+    @keyframes mais-um {
+      0%, 54% { opacity: 0; transform: translateY(0); }
+      60%     { opacity: 1; transform: translateY(-6px); }
+      78%     { opacity: 0; transform: translateY(-16px); }
+      100%    { opacity: 0; }
+    }
+    @media (prefers-reduced-motion: reduce) { .cam .item, .cam .det, .cam .mais1, .cam .rec i { animation: none; } }
+
     @media (max-width: 1000px) {
       .kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
       .grade-2, .grade-2b, .lixeiras { grid-template-columns: minmax(0, 1fr); }
@@ -115,6 +162,11 @@
       <div class="card kpi"><div class="rot">Itens reciclados e validados</div><div class="val" id="k-itens">—</div><div class="det" id="k-dep">—</div></div>
       <div class="card kpi"><div class="rot">Resíduos desviados do aterro</div><div class="val" id="k-kg">—</div><div class="det" id="k-part">—</div></div>
       <div class="card kpi"><div class="rot">Taxa de validação por visão computacional</div><div class="val" id="k-taxa">—</div><div class="det" id="k-div">—</div></div>
+    </section>
+
+    <section class="card">
+      <h2>📹 Câmeras das lixeiras <span class="sub">representação ilustrativa · status em tempo real</span></h2>
+      <div class="cameras" id="cameras"></div>
     </section>
 
     <section class="grade-2">

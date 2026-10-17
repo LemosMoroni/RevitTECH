@@ -48,6 +48,7 @@ function render(p) {
 
   ultimosDados = p.porHora || [];
   renderGraficoHora(ultimosDados);
+  renderCameras(p);
 
   $('lixeiras').innerHTML = p.lixeiras.map((l) => {
     const pct = l.nivel / l.capacidade;
@@ -93,6 +94,109 @@ function render(p) {
     : `últimos ${p.ultimos.length} de ${fmtNum(k.depositos)} · fotos aparecem nos depósitos feitos na estação`;
   primeiraCarga = false;
 }
+
+// ---------- Parede de câmeras (ilustrativa) ----------
+// A cena é uma SIMULAÇÃO — o painel não recebe o vídeo das estações. O status de cada
+// câmera (nível, em uso, coletar) é real. Se a lixeira teve um depósito com foto nos
+// últimos 15 min, a foto real substitui a simulação e o selo muda para "registro real".
+const cameras = new Map();
+const ITENS_CAM = [
+  { nome: 'garrafa', conf: 91, forma: `
+    <rect x="154" y="20" width="12" height="9" rx="2" fill="#3b82f6"/>
+    <path d="M155 29 h10 v6 q8 4 8 12 v30 q0 6 -6 6 h-14 q-6 0 -6 -6 v-30 q0 -8 8 -12 z" fill="#cfe3ef" fill-opacity=".85" stroke="#9fc3d8"/>
+    <rect x="147" y="52" width="26" height="11" fill="#e11d48" fill-opacity=".7"/>` },
+  { nome: 'lata', conf: 88, forma: `
+    <rect x="147" y="28" width="26" height="52" rx="5" fill="#d7dedb" stroke="#9aa6a1"/>
+    <ellipse cx="160" cy="29" rx="13" ry="3.5" fill="#eef2f1" stroke="#9aa6a1"/>
+    <rect x="147" y="44" width="26" height="18" fill="#0f766e" fill-opacity=".85"/>
+    <rect x="147" y="66" width="26" height="4" fill="#0f766e" fill-opacity=".5"/>` },
+  { nome: 'copo', conf: 86, forma: `
+    <path d="M144 30 L176 30 L171 82 L149 82 Z" fill="#f4f7f6" stroke="#c9d2ce"/>
+    <ellipse cx="160" cy="30" rx="16" ry="3.5" fill="#fff" stroke="#c9d2ce"/>
+    <path d="M152 36 L154 78 M160 36 L160 78 M168 36 L166 78" stroke="#dfe6e3" stroke-width="1"/>` },
+];
+
+function cenaCamera(i) {
+  const it = ITENS_CAM[i % ITENS_CAM.length];
+  return `<svg viewBox="0 0 320 180" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+    <defs><linearGradient id="fundo-cam-${i}" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#1b2a24"/><stop offset="1" stop-color="#0a1310"/></linearGradient></defs>
+    <rect width="320" height="180" fill="url(#fundo-cam-${i})"/>
+    <ellipse cx="160" cy="150" rx="112" ry="22" fill="#030605" stroke="#3b4d45" stroke-width="2"/>
+    <rect x="78" y="14" width="164" height="140" rx="6" fill="none" stroke="#22c55e" stroke-opacity=".35" stroke-dasharray="6 5"/>
+    <g class="item">
+      ${it.forma}
+      <g class="det">
+        <rect x="138" y="16" width="44" height="70" rx="4" fill="none" stroke="#22c55e" stroke-width="2"/>
+        <rect x="138" y="4" width="64" height="12" rx="3" fill="#22c55e"/>
+        <text x="141" y="13" font-size="8.5" font-weight="700" fill="#062b16" font-family="Inter, system-ui, sans-serif">${it.nome} ${it.conf}%</text>
+      </g>
+    </g>
+    <path d="M48 150 A112 22 0 0 0 272 150 L272 180 L48 180 Z" fill="#163126"/>
+    <path d="M48 150 A112 22 0 0 0 272 150" fill="none" stroke="#3b4d45" stroke-width="2"/>
+    <text class="mais1" x="160" y="140" text-anchor="middle" font-size="16" font-weight="900" fill="#22c55e" font-family="Inter, system-ui, sans-serif">+1</text>
+  </svg>`;
+}
+
+function criarCamera(i) {
+  const el = document.createElement('div');
+  el.className = 'cam';
+  // ritmos diferentes para as câmeras não caírem todas juntas
+  el.style.setProperty('--dur', `${[6.2, 7.4, 5.6, 6.8][i % 4]}s`);
+  el.style.setProperty('--atraso', `${[0, 1.8, 3.3, 0.9][i % 4]}s`);
+  el.innerHTML = `${cenaCamera(i)}
+    <img class="foto-real" alt="Último registro real da câmera" hidden>
+    <div class="hud te"><span class="rec"><i></i> REC</span><span>CAM ${String(i + 1).padStart(2, '0')}</span><span class="selo-sim">SIMULAÇÃO</span></div>
+    <div class="hud td cam-hora">${new Date().toLocaleTimeString('pt-BR')}</div>
+    <div class="hud be"><b class="cam-nome"></b><small class="cam-det"></small></div>
+    <div class="hud bd"><span class="chip cam-chip"></span></div>`;
+  return el;
+}
+
+function renderCameras(p) {
+  const grade = $('cameras');
+  p.lixeiras.forEach((l, i) => {
+    let el = cameras.get(l.id);
+    if (!el) {
+      el = criarCamera(i);
+      cameras.set(l.id, el);
+      grade.appendChild(el);
+    }
+    const pct = Math.round((100 * l.nivel) / l.capacidade);
+    el.querySelector('.cam-nome').textContent = l.nome;
+    el.querySelector('.cam-det').textContent = `${l.id} · ${pct}% cheia`;
+    const [txt, cls] = l.emUso ? ['● DEPOSITANDO', 'info']
+      : pct >= 80 ? ['⚠ COLETAR', 'erro']
+        : pct >= 60 ? ['◐ ATENÇÃO', 'alerta']
+          : ['✓ ONLINE', 'ok'];
+    const chip = el.querySelector('.cam-chip');
+    chip.textContent = txt;
+    chip.className = `chip cam-chip ${cls}`;
+    el.classList.toggle('em-uso', !!l.emUso);
+    el.classList.toggle('cheia', !l.emUso && pct >= 80);
+
+    const real = p.ultimos.find((d) => d.lixeiraId === l.id && d.temSnapshot && Date.now() - (d.finalizadoEm || 0) < 15 * 60e3);
+    const img = el.querySelector('.foto-real');
+    const selo = el.querySelector('.selo-sim');
+    if (real) {
+      const src = `/api/depositos/${real.id}/snapshot`;
+      if (img.getAttribute('src') !== src) img.src = src;
+      img.hidden = false;
+      selo.textContent = `REGISTRO REAL ${fmtHora(real.finalizadoEm)}`;
+      selo.classList.add('real');
+    } else {
+      img.hidden = true;
+      selo.textContent = 'SIMULAÇÃO';
+      selo.classList.remove('real');
+    }
+  });
+}
+
+// relógio de cada câmera
+setInterval(() => {
+  const agora = new Date().toLocaleTimeString('pt-BR');
+  document.querySelectorAll('.cam-hora').forEach((e) => { e.textContent = agora; });
+}, 1000);
 
 // ---------- Gráfico de colunas: itens validados por hora ----------
 let ultimoGrafico = '';
