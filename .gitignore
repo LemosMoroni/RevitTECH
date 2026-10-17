@@ -1,0 +1,21 @@
+# Dependências
+node_modules/
+
+# Banco de dados local (recriado automaticamente com dados de demonstração)
+data/
+
+# Bibliotecas e modelo de IA para uso offline (~67 MB) — gere com: npm run offline
+public/vendor/
+
+# Ambiente e logs
+.env
+.env.*
+*.log
+npm-debug.log*
+
+# Sistema / editores
+.DS_Store
+Thumbs.db
+desktop.ini
+.vscode/
+.idea/

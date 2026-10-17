@@ -1,0 +1,237 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#0b3d2e">
+  <title>RevitTech</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+  <style>
+    .wrap { max-width: 1160px; margin: 0 auto; padding: 0 20px; }
+
+    /* Navegação */
+    .nav { position: sticky; top: 0; z-index: 10; background: rgba(11, 61, 46, .96); backdrop-filter: blur(6px); }
+    .nav .wrap { display: flex; align-items: center; justify-content: space-between; gap: 16px; height: 64px; }
+    .nav .logo { color: #fff; }
+    .nav .logo small { color: #9fd5b6; }
+    .nav-links { display: flex; align-items: center; gap: 20px; font-size: 14px; font-weight: 600; }
+    .nav-links a { color: #cfe9da; text-decoration: none; }
+    .nav-links a:hover { color: #fff; }
+    .nav-links .btn { color: #0b3d2e; background: #fff; padding: 9px 16px; font-size: 14px; }
+
+    /* Hero */
+    .hero { background: linear-gradient(160deg, #0b3d2e, #14532d 60%, #166534); color: #fff; padding: 56px 0 120px; }
+    .hero .wrap { display: grid; grid-template-columns: 1.4fr 1fr; gap: 48px; align-items: center; }
+    .tag { display: inline-flex; gap: 6px; padding: 6px 12px; border-radius: 999px; background: rgba(255,255,255,.12); font-size: 13px; font-weight: 600; color: #cfe9da; }
+    .hero h1 { font-size: clamp(36px, 5.4vw, 60px); line-height: 1.02; letter-spacing: -.035em; margin: 18px 0 16px; }
+    .hero h1 span { color: #4ade80; }
+    .hero p { font-size: 19px; color: #d6eee0; max-width: 560px; }
+    .ctas { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 28px; }
+    .btn.grande { padding: 18px 28px; font-size: 18px; border-radius: 14px; box-shadow: 0 10px 30px rgba(34,197,94,.35); }
+    .btn.claro { background: rgba(255,255,255,.12); color: #fff; padding: 18px 24px; font-size: 16px; border-radius: 14px; text-decoration: none; }
+    .btn.claro:hover { background: rgba(255,255,255,.2); }
+    a.btn { text-decoration: none; }
+
+    .qr-card { background: #fff; color: var(--texto); border-radius: 24px; padding: 24px; text-align: center; box-shadow: 0 20px 50px rgba(0,0,0,.25); max-width: 340px; justify-self: end; }
+    .qr-card .passo-qr { display: inline-flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 700; color: var(--verde); text-transform: uppercase; letter-spacing: .06em; }
+    .qr-card img { width: 220px; height: 220px; display: block; margin: 12px auto; }
+    .qr-card h3 { font-size: 18px; }
+    .qr-card p { color: var(--muted); font-size: 13px; margin-top: 4px; }
+    .qr-card code { display: inline-block; margin-top: 10px; background: var(--bg); padding: 4px 10px; border-radius: 8px; font-size: 12px; word-break: break-all; }
+
+    /* Números ao vivo */
+    .numeros { margin-top: -72px; position: relative; }
+    .numeros .grade { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+    .numero { display: flex; align-items: center; gap: 16px; }
+    .numero .ic { width: 52px; height: 52px; border-radius: 14px; background: var(--verde-claro); display: grid; place-items: center; font-size: 26px; flex: none; }
+    .numero .val { font-size: 28px; font-weight: 900; letter-spacing: -.02em; line-height: 1.1; font-variant-numeric: tabular-nums; }
+    .numero .rot { font-size: 13px; color: var(--muted); }
+    .ao-vivo { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 700; color: var(--verde); margin-bottom: 10px; }
+    .ao-vivo i { width: 8px; height: 8px; border-radius: 50%; background: var(--verde); animation: pulso 1.5s infinite; }
+
+    /* Seções */
+    section.bloco { padding: 56px 0 8px; }
+    .titulo-secao { text-align: center; margin-bottom: 28px; }
+    .titulo-secao h2 { font-size: clamp(26px, 3.4vw, 36px); letter-spacing: -.02em; }
+    .titulo-secao p { color: var(--muted); margin-top: 6px; font-size: 16px; }
+
+    /* Como funciona */
+    .passos { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; counter-reset: passo; }
+    .passo { position: relative; background: #fff; border: 1px solid var(--borda); border-radius: 20px; padding: 24px 20px; text-align: center; box-shadow: var(--sombra); }
+    .passo .num { position: absolute; top: -14px; left: 50%; transform: translateX(-50%); width: 28px; height: 28px; border-radius: 50%; background: var(--verde); color: #fff; font-weight: 800; font-size: 14px; display: grid; place-items: center; box-shadow: 0 0 0 4px var(--bg); }
+    .passo .ic { font-size: 44px; margin: 6px 0 10px; }
+    .passo h3 { font-size: 18px; margin-bottom: 6px; }
+    .passo p { color: var(--muted); font-size: 14px; }
+    .passo:not(:last-child)::after { content: '→'; position: absolute; right: -14px; top: 50%; transform: translateY(-50%); width: 24px; height: 24px; border-radius: 50%; background: var(--bg); color: var(--verde); font-weight: 900; display: grid; place-items: center; z-index: 1; }
+    .passo.destaque { border: 2px solid var(--verde); background: #f0fdf4; }
+    .selo-ia { display: inline-block; margin-top: 10px; font-size: 11px; font-weight: 700; padding: 3px 8px; border-radius: 999px; background: #dbeafe; color: #1e40af; }
+
+    /* Perfis */
+    .perfis { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+    .perfil { display: flex; flex-direction: column; gap: 12px; border-top: 5px solid var(--verde); }
+    .perfil.estacao { border-top-color: #2563eb; }
+    .perfil.org { border-top-color: #0b3d2e; }
+    .perfil .ic { font-size: 40px; }
+    .perfil h3 { font-size: 20px; }
+    .perfil p { color: var(--muted); font-size: 14px; flex: 1; }
+    .perfil ul { list-style: none; display: grid; gap: 6px; align-content: start; font-size: 14px; color: var(--texto); flex: 1; }
+    .perfil ul li::before { content: '✓ '; color: var(--verde); font-weight: 800; }
+    .perfil select { width: 100%; padding: 12px; border-radius: 12px; border: 1px solid var(--borda); background: #fff; font-size: 15px; }
+    .perfil .btn.azul { background: #2563eb; }
+    .perfil .btn.escuro { background: #0b3d2e; }
+
+    footer { text-align: center; color: var(--muted); font-size: 13px; padding: 48px 20px 32px; }
+
+    @media (max-width: 900px) {
+      .hero .wrap { grid-template-columns: 1fr; gap: 32px; }
+      .qr-card { justify-self: start; }
+      .passos { grid-template-columns: 1fr 1fr; row-gap: 28px; }
+      .passo:nth-child(2)::after { display: none; }
+      .perfis, .numeros .grade { grid-template-columns: 1fr; }
+      .nav-links a:not(.btn) { display: none; }
+    }
+    @media (max-width: 560px) {
+      .hero { padding: 36px 0 100px; }
+      .qr-card { display: none; } /* no celular, o app já está à mão */
+      .ctas .btn { width: 100%; }
+      .passos { grid-template-columns: 1fr; }
+      .passo:not(:last-child)::after { display: none; }
+      .wrap { padding: 0 16px; }
+    }
+  </style>
+</head>
+<body>
+  <nav class="nav">
+    <div class="wrap">
+      <a class="logo" href="index.html"><span class="marca">♻</span><span>RevitTech<small>OLESC Sustentável</small></span></a>
+      <div class="nav-links">
+        <a href="#como">Como funciona</a>
+        <a href="#perfis">Acessos</a>
+        <a href="painel.html">Ranking ao vivo</a>
+        <a class="btn" href="app.html">Abrir app</a>
+      </div>
+    </div>
+  </nav>
+
+  <header class="hero">
+    <div class="wrap">
+      <div>
+        <span class="tag">♻️ Lixeiras inteligentes da OLESC</span>
+        <h1>Jogou no lugar certo?<br><span>Ganhou ponto.</span></h1>
+        <p>Escaneie a lixeira, diga o que vai descartar e a câmera confere. Cada item validado vira pontos para a sua delegação.</p>
+        <div class="ctas">
+          <a class="btn grande" href="app.html">📱 Quero reciclar</a>
+          <a class="btn claro" href="painel.html">🏆 Ver ranking ao vivo</a>
+        </div>
+      </div>
+      <div class="qr-card">
+        <span class="passo-qr">📲 Está no computador?</span>
+        <img src="/api/qrcode-app" alt="QR code para abrir o app no celular">
+        <h3>Abra o app no seu celular</h3>
+        <p>Aponte a câmera do celular para o código. Use a mesma rede Wi-Fi.</p>
+        <code id="url-app">—</code>
+      </div>
+    </div>
+  </header>
+
+  <div class="numeros">
+    <div class="wrap">
+      <div class="card">
+        <div class="ao-vivo"><i></i> AO VIVO NA OLESC</div>
+        <div class="grade">
+          <div class="numero"><span class="ic">🌱</span><div><div class="val" id="n-co2">—</div><div class="rot">de CO₂e evitados pela reciclagem</div></div></div>
+          <div class="numero"><span class="ic">♻️</span><div><div class="val" id="n-itens">—</div><div class="rot">itens reciclados e validados pela câmera</div></div></div>
+          <div class="numero"><span class="ic">🥇</span><div><div class="val" id="n-lider">—</div><div class="rot" id="n-lider-rot">delegação líder do ranking</div></div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <section class="bloco" id="como">
+    <div class="wrap">
+      <div class="titulo-secao">
+        <h2>Como funciona</h2>
+        <p>Leva menos de 30 segundos</p>
+      </div>
+      <div class="passos">
+        <div class="passo"><span class="num">1</span><div class="ic">📷</div><h3>Escaneie</h3><p>No app, aponte para o QR code colado na lixeira.</p></div>
+        <div class="passo"><span class="num">2</span><div class="ic">✍️</div><h3>Declare</h3><p>Escolha o material (PET, lata ou copo) e a quantidade.</p></div>
+        <div class="passo destaque"><span class="num">3</span><div class="ic">🔓</div><h3>Deposite</h3><p>A lixeira destrava e a câmera confere item por item.</p><span class="selo-ia">🤖 Visão computacional</span></div>
+        <div class="passo"><span class="num">4</span><div class="ic">🏆</div><h3>Pontue</h3><p>Itens validados viram pontos para a sua delegação.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="bloco" id="perfis">
+    <div class="wrap">
+      <div class="titulo-secao">
+        <h2>Quem é você?</h2>
+        <p>Escolha seu perfil para entrar na tela certa</p>
+      </div>
+      <div class="perfis">
+        <div class="card perfil">
+          <div class="ic">🏃</div>
+          <h3>Atleta ou torcedor</h3>
+          <ul>
+            <li>Cadastro em 10 segundos</li>
+            <li>Escaneie e recicle</li>
+            <li>Some pontos para a delegação</li>
+          </ul>
+          <a class="btn bloco" href="app.html">Abrir o app</a>
+        </div>
+        <div class="card perfil estacao">
+          <div class="ic">🗑️</div>
+          <h3>Estação da lixeira</h3>
+          <ul>
+            <li>Use no computador com webcam</li>
+            <li>Destrava e valida cada depósito</li>
+            <li>Mostra o QR code e o nível de enchimento</li>
+          </ul>
+          <select id="sel-lixeira" aria-label="Escolha a lixeira"><option value="GIN-01">Ginásio Central (GIN-01)</option></select>
+          <button class="btn bloco azul" id="btn-estacao">Iniciar estação</button>
+        </div>
+        <div class="card perfil org">
+          <div class="ic">📊</div>
+          <h3>Organização / ESG</h3>
+          <ul>
+            <li>CO₂e evitado e resíduos desviados</li>
+            <li>Ranking das delegações</li>
+            <li>Alertas e registro de coletas</li>
+          </ul>
+          <a class="btn bloco escuro" href="painel.html">Abrir painel</a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <footer>RevitTech · protótipo do Hackathon OLESC · a IA (TensorFlow.js · COCO-SSD) roda localmente no navegador da lixeira</footer>
+
+  <script src="comum.js"></script>
+  <script>
+    const $ = (id) => document.getElementById(id);
+
+    api('/api/config').then((c) => { $('url-app').textContent = `${c.baseUrl}/app.html`; }).catch(() => {});
+
+    api('/api/lixeiras').then((ls) => {
+      $('sel-lixeira').innerHTML = ls.map((l) => `<option value="${l.id}">${escapar(l.nome)} (${l.id})</option>`).join('');
+    }).catch(() => {});
+
+    $('btn-estacao').onclick = () => { location.href = `lixeira.html?id=${encodeURIComponent($('sel-lixeira').value)}`; };
+
+    async function numeros() {
+      try {
+        const p = await api('/api/painel');
+        $('n-co2').textContent = fmtCO2(p.kpis.co2Kg);
+        $('n-itens').textContent = fmtNum(p.kpis.itens);
+        const lider = p.rankingDelegacoes[0];
+        $('n-lider').textContent = lider ? lider.delegacao : '—';
+        if (lider) $('n-lider-rot').textContent = `delegação líder · ${fmtNum(lider.pontos)} pts`;
+      } catch {}
+    }
+    numeros();
+    setInterval(numeros, 5000);
+  </script>
+</body>
+</html>

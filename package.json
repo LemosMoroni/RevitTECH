@@ -1,0 +1,26 @@
+{
+  "name": "revittech",
+  "version": "1.0.0",
+  "description": "RevitTech - Lixeira inteligente com visão computacional para coleta seletiva e logística reversa na OLESC",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "reset": "node server.js --reset",
+    "offline": "node scripts/offline.js"
+  },
+  "keywords": [
+    "esg",
+    "reciclagem",
+    "logistica-reversa",
+    "visao-computacional",
+    "tensorflowjs",
+    "hackathon"
+  ],
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "express": "^4.21.2",
+    "qrcode": "^1.5.4"
+  }
+}

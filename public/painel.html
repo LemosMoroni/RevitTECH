@@ -1,0 +1,133 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>RevitTech · Painel ESG</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+  <style>
+    .ao-vivo { display: inline-flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 600; color: var(--muted); }
+    .ao-vivo i { width: 8px; height: 8px; border-radius: 50%; background: var(--verde); box-shadow: 0 0 0 4px rgba(22,163,74,.2); animation: pulso 1.5s infinite; }
+    main { max-width: 1400px; margin: 0 auto; padding: 20px; display: grid; gap: 16px; }
+    .kpis { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
+    .kpi .rot { font-size: 13px; font-weight: 600; color: var(--muted); }
+    .kpi .val { font-size: 38px; font-weight: 900; letter-spacing: -.02em; margin: 4px 0 2px; font-variant-numeric: tabular-nums; }
+    .kpi .val small { font-size: 18px; font-weight: 700; color: var(--muted); }
+    .kpi .det { font-size: 13px; color: var(--muted); }
+    .kpi.destaque { background: linear-gradient(140deg, #16a34a, #0b3d2e); color: #fff; border: 0; }
+    .kpi.destaque .rot, .kpi.destaque .det, .kpi.destaque .val small { color: #c8f0d6; }
+    .grade-2 { display: grid; grid-template-columns: 1.2fr 1fr; gap: 16px; }
+    .grade-2b { display: grid; grid-template-columns: 1.4fr 1fr; gap: 16px; }
+
+    .barras { display: grid; gap: 10px; }
+    .barra-linha { display: grid; grid-template-columns: 28px 130px 1fr 90px; gap: 10px; align-items: center; font-size: 14px; }
+    .barra-linha .pos { font-weight: 800; color: var(--muted); text-align: center; }
+    .barra-linha .nome { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .barra-linha .trilho { height: 14px; border-radius: 4px; background: transparent; position: relative; }
+    .barra-linha .trilho > i { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 0 4px 4px 0; background: var(--verde); transition: width .5s; min-width: 2px; }
+    .barra-linha .valor { text-align: right; font-weight: 700; font-variant-numeric: tabular-nums; }
+    .barra-linha:hover .trilho > i { filter: brightness(1.1); }
+    .barra-linha.lider .trilho > i { background: var(--verde-escuro); }
+
+    .mat-linha { display: grid; grid-template-columns: 36px 1fr auto; gap: 12px; align-items: center; padding: 12px 0; border-bottom: 1px solid var(--borda); }
+    .mat-linha:last-child { border-bottom: 0; }
+    .mat-linha .ic { font-size: 28px; }
+    .mat-linha .num { text-align: right; font-variant-numeric: tabular-nums; }
+    .mat-linha .num b { font-size: 20px; display: block; }
+    .mat-linha .num small { color: var(--muted); font-size: 12px; }
+    .mat-linha .trilho { height: 8px; margin-top: 6px; border-radius: 4px; position: relative; }
+    .mat-linha .trilho > i { position: absolute; left: 0; top: 0; bottom: 0; background: var(--verde); border-radius: 0 4px 4px 0; transition: width .5s; }
+
+    .lixeiras { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+    .lix { border: 1px solid var(--borda); border-radius: 14px; padding: 14px; display: grid; gap: 8px; }
+    .lix.cheia { border-color: #fca5a5; background: #fff7f7; }
+    .lix .topo-lix { display: flex; justify-content: space-between; align-items: start; gap: 8px; }
+    .lix .pct { font-size: 28px; font-weight: 900; font-variant-numeric: tabular-nums; }
+    .lix small { color: var(--muted); font-size: 12px; }
+
+    .coletas { display: grid; gap: 8px; font-size: 13px; }
+    .coleta { display: grid; grid-template-columns: auto 1fr auto; gap: 10px; align-items: center; padding: 10px 12px; border-radius: 12px; background: var(--bg); }
+
+    table { width: 100%; border-collapse: collapse; font-size: 14px; }
+    th { text-align: left; font-size: 12px; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); font-weight: 700; padding: 8px 10px; border-bottom: 1px solid var(--borda); }
+    td { padding: 10px; border-bottom: 1px solid var(--borda); vertical-align: middle; }
+    tr:last-child td { border-bottom: 0; }
+    tr.novo td { animation: destaque 2s; }
+    @keyframes destaque { from { background: var(--verde-claro); } to { background: transparent; } }
+    td.num { text-align: right; font-variant-numeric: tabular-nums; font-weight: 700; }
+    .thumb { width: 64px; height: 40px; border-radius: 6px; object-fit: cover; display: block; background: var(--bg); }
+    .thumb-vazio { width: 64px; height: 40px; border-radius: 6px; background: var(--bg); display: grid; place-items: center; color: var(--muted); font-size: 11px; }
+    .tabela-wrap { overflow-x: auto; }
+    .top-atletas { margin-top: 18px; padding-top: 14px; border-top: 1px solid var(--borda); }
+    .top-atletas ol { list-style: none; display: grid; gap: 6px; font-size: 14px; }
+    .top-atletas li { display: flex; justify-content: space-between; gap: 8px; }
+
+    @media (max-width: 1000px) {
+      .kpis { grid-template-columns: repeat(2, 1fr); }
+      .grade-2, .grade-2b, .lixeiras { grid-template-columns: 1fr; }
+    }
+    @media (max-width: 520px) {
+      main { padding: 12px 16px; }
+      .kpis { grid-template-columns: 1fr; }
+      .barra-linha { grid-template-columns: 22px 90px 1fr 70px; }
+    }
+  </style>
+</head>
+<body>
+  <header class="topo">
+    <a class="logo" href="index.html"><span class="marca">♻</span><span>RevitTech<small>Painel ESG · Logística reversa</small></span></a>
+    <span class="ao-vivo"><i></i> Ao vivo · <span id="relogio">—</span></span>
+  </header>
+
+  <main>
+    <section class="kpis">
+      <div class="card kpi destaque"><div class="rot">CO₂e evitado pela reciclagem</div><div class="val" id="k-co2">—</div><div class="det">estimativa · fatores EPA WARM</div></div>
+      <div class="card kpi"><div class="rot">Itens reciclados e validados</div><div class="val" id="k-itens">—</div><div class="det" id="k-dep">—</div></div>
+      <div class="card kpi"><div class="rot">Resíduos desviados do aterro</div><div class="val" id="k-kg">—</div><div class="det" id="k-part">—</div></div>
+      <div class="card kpi"><div class="rot">Taxa de validação por visão computacional</div><div class="val" id="k-taxa">—</div><div class="det" id="k-div">—</div></div>
+    </section>
+
+    <section class="grade-2">
+      <div class="card">
+        <h2>🏆 Ranking de sustentabilidade · Delegações <span class="sub">pontos</span></h2>
+        <div class="barras" id="ranking"></div>
+        <div class="top-atletas">
+          <h2 style="margin-bottom:8px">⭐ Top recicladores <span class="sub">pontos</span></h2>
+          <ol id="top-usuarios"></ol>
+        </div>
+      </div>
+      <div class="card">
+        <h2>♻️ Por material <span class="sub">itens validados</span></h2>
+        <div id="materiais"></div>
+      </div>
+    </section>
+
+    <section class="grade-2b">
+      <div class="card">
+        <h2>🗑️ Lixeiras inteligentes <span class="sub">alerta de coleta a partir de 80%</span></h2>
+        <div class="lixeiras" id="lixeiras"></div>
+      </div>
+      <div class="card">
+        <h2>🚛 Logística reversa · Coletas <span class="sub">destino: cooperativa de reciclagem</span></h2>
+        <div class="coletas" id="coletas"></div>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>📸 Depósitos em tempo real <span class="sub">com evidência capturada pela câmera</span></h2>
+      <div class="tabela-wrap">
+        <table>
+          <thead><tr><th>Hora</th><th>Evidência</th><th>Participante</th><th>Lixeira</th><th>Material</th><th style="text-align:right">Declarado</th><th style="text-align:right">Validado</th><th>Status</th><th style="text-align:right">Pontos</th></tr></thead>
+          <tbody id="feed"></tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+
+  <div id="toast" class="toast"></div>
+  <script src="comum.js"></script>
+  <script src="painel.js"></script>
+</body>
+</html>

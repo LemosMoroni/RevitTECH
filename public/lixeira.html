@@ -1,0 +1,149 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>RevitTech · Lixeira inteligente</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+  <style>
+    body { display: grid; grid-template-rows: auto 1fr; height: 100vh; overflow: hidden; background: #0d1f18; }
+    .topo { background: #0b3d2e; border-color: #0b3d2e; color: #fff; }
+    .topo .logo small { color: #9fd5b6; }
+    .topo .lixeira-nome { text-align: right; }
+    .topo .lixeira-nome b { font-size: 18px; display: block; }
+    .topo .lixeira-nome span { font-size: 13px; color: #9fd5b6; }
+    .status-ia { display: flex; align-items: center; gap: 8px; font-size: 13px; color: #cfe9da; background: rgba(255,255,255,.08); padding: 6px 12px; border-radius: 999px; }
+    .status-ia .ponto { width: 8px; height: 8px; border-radius: 50%; background: var(--amarelo); }
+    .status-ia.pronto .ponto { background: #22c55e; box-shadow: 0 0 0 4px rgba(34,197,94,.25); }
+
+    .estacao { display: grid; grid-template-columns: 1fr 400px; gap: 16px; padding: 16px; min-height: 0; }
+    .camera { position: relative; display: grid; place-items: center; min-height: 0; }
+    .video-box { position: relative; width: 100%; max-width: calc((100vh - 120px) * 16 / 9); aspect-ratio: 16 / 9; border-radius: 20px; overflow: hidden; background: #000; border: 4px solid #33473f; transition: border-color .3s; }
+    .video-box.liberada { border-color: #22c55e; box-shadow: 0 0 0 6px rgba(34,197,94,.2); }
+    .video-box video, .video-box canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
+    .video-box video { object-fit: cover; transform: scaleX(-1); }
+    .hud { position: absolute; left: 12px; top: 12px; background: rgba(0,0,0,.55); color: #fff; font-size: 12px; padding: 6px 10px; border-radius: 8px; font-variant-numeric: tabular-nums; }
+    .flash { position: absolute; inset: 0; display: grid; place-items: center; font-size: 140px; font-weight: 900; color: #22c55e; text-shadow: 0 4px 30px rgba(0,0,0,.5); opacity: 0; pointer-events: none; }
+    .flash.on { animation: flash .9s ease-out; }
+    @keyframes flash { 0% { opacity: 0; transform: scale(.6); } 20% { opacity: 1; transform: scale(1.1); } 100% { opacity: 0; transform: scale(1.3); } }
+    .zona { position: absolute; left: 8%; right: 8%; bottom: 6%; padding: 8px; text-align: center; color: #fff; font-weight: 700; font-size: 14px; letter-spacing: .08em; text-transform: uppercase; background: rgba(0,0,0,.45); border-radius: 10px; }
+
+    .painel { display: flex; flex-direction: column; gap: 14px; min-height: 0; overflow: auto; }
+    .painel .card { padding: 22px; }
+    .estado { border-radius: 20px; padding: 22px; color: #fff; text-align: center; transition: background .3s; }
+    .estado .icone { font-size: 52px; line-height: 1; }
+    .estado h1 { font-size: 30px; font-weight: 900; letter-spacing: .04em; margin-top: 6px; }
+    .estado p { opacity: .9; margin-top: 4px; }
+    .estado.trancada { background: linear-gradient(135deg, #b91c1c, #7f1d1d); }
+    .estado.liberada { background: linear-gradient(135deg, #16a34a, #0b3d2e); }
+    .estado.liberada .icone { animation: pulso 1.2s infinite; }
+    .estado.validando { background: linear-gradient(135deg, #2563eb, #1e3a8a); }
+
+    #bloco-qr { text-align: center; }
+    #bloco-qr img { width: 100%; max-width: 220px; aspect-ratio: 1; border-radius: 12px; }
+    #bloco-qr .codigo { font-size: 22px; font-weight: 800; letter-spacing: .08em; margin-top: 6px; }
+
+    .quem { display: flex; align-items: center; gap: 12px; margin-bottom: 14px; }
+    .quem .avatar { width: 44px; height: 44px; border-radius: 50%; background: var(--verde-claro); color: var(--verde-escuro); display: grid; place-items: center; font-weight: 800; }
+    .instrucao { font-size: 18px; font-weight: 600; text-align: center; }
+    .contador { text-align: center; font-size: 84px; font-weight: 900; line-height: 1; margin: 10px 0 4px; font-variant-numeric: tabular-nums; color: var(--verde-escuro); }
+    .contador small { font-size: 40px; color: var(--muted); }
+    .contador-legenda { text-align: center; color: var(--muted); font-size: 14px; margin-bottom: 14px; }
+    .tempo { display: flex; justify-content: space-between; font-size: 13px; color: var(--muted); margin: 14px 0 6px; }
+
+    .resultado { text-align: center; animation: surgir .3s; }
+    .resultado .icone { font-size: 64px; }
+    .resultado h3 { font-size: 24px; margin: 6px 0; }
+    .resultado .pts { font-size: 40px; font-weight: 900; color: var(--verde); }
+
+    .nivel-linha { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 8px; }
+    .nivel-linha b { font-size: 22px; }
+
+    .overlay { position: fixed; inset: 0; background: rgba(11,61,46,.92); display: grid; place-items: center; z-index: 50; color: #fff; text-align: center; padding: 24px; }
+    .overlay .caixa { max-width: 520px; }
+    .overlay h2 { font-size: 32px; margin: 12px 0 8px; }
+    .overlay p { opacity: .85; margin-bottom: 24px; }
+    .overlay .grande { font-size: 72px; }
+
+    @media (max-width: 900px) {
+      body { height: auto; overflow: auto; }
+      .estacao { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <header class="topo">
+    <a class="logo" href="index.html"><span class="marca">♻</span><span>RevitTech<small>Lixeira inteligente</small></span></a>
+    <div id="status-ia" class="status-ia"><span class="ponto"></span><span id="status-ia-txt">Carregando IA…</span></div>
+    <div class="lixeira-nome"><b id="lix-nome">—</b><span id="lix-local"></span></div>
+  </header>
+
+  <main class="estacao">
+    <section class="camera">
+      <div id="video-box" class="video-box">
+        <video id="video" autoplay muted playsinline></video>
+        <canvas id="overlay"></canvas>
+        <div id="hud" class="hud">câmera desligada</div>
+        <div id="zona" class="zona">Boca da lixeira</div>
+        <div id="flash" class="flash">+1</div>
+      </div>
+    </section>
+
+    <aside class="painel">
+      <div id="estado" class="estado trancada">
+        <div class="icone" id="estado-icone">🔒</div>
+        <h1 id="estado-titulo">TRANCADA</h1>
+        <p id="estado-sub">Escaneie o QR code no app RevitTech</p>
+      </div>
+
+      <div id="bloco-qr" class="card">
+        <img id="qr" alt="QR code da lixeira">
+        <div class="codigo" id="codigo">—</div>
+        <div class="muted" style="font-size:13px">Abra o app, toque em <b>Escanear lixeira</b> e aponte para este código</div>
+      </div>
+
+      <div id="bloco-sessao" class="card" hidden>
+        <div class="quem">
+          <div class="avatar" id="s-avatar">?</div>
+          <div><b id="s-nome">—</b><div class="muted" style="font-size:13px" id="s-delegacao">—</div></div>
+        </div>
+        <div class="instrucao" id="s-instrucao">—</div>
+        <div class="contador"><span id="s-contados">0</span><small> / <span id="s-declarado">0</span></small></div>
+        <div class="contador-legenda">itens validados pela câmera</div>
+        <div class="tempo"><span>Tempo restante</span><b id="s-tempo">45s</b></div>
+        <div class="barra"><i id="s-tempo-barra" style="width:100%"></i></div>
+        <button class="btn secundario bloco" id="btn-concluir" style="margin-top:16px">Concluir depósito</button>
+      </div>
+
+      <div id="bloco-resultado" class="card" hidden></div>
+
+      <div class="card">
+        <h2>Nível da lixeira <span class="sub" id="nivel-pct">—</span></h2>
+        <div class="nivel-linha"><b id="nivel-itens">—</b><span class="muted" id="nivel-status">—</span></div>
+        <div class="barra" id="nivel-barra"><i style="width:0%"></i></div>
+      </div>
+    </aside>
+  </main>
+
+  <div id="ativar" class="overlay">
+    <div class="caixa">
+      <div class="grande">♻️</div>
+      <h2>Ativar lixeira inteligente</h2>
+      <p>A câmera vai validar cada item depositado usando visão computacional (TensorFlow.js · COCO-SSD), rodando localmente no navegador.</p>
+      <button class="btn" id="btn-ativar" style="font-size:20px;padding:18px 32px">📷 Ativar câmera</button>
+    </div>
+  </div>
+
+  <div id="toast" class="toast"></div>
+
+  <!-- Bibliotecas locais (offline), com fallback para a CDN -->
+  <script src="vendor/tf.min.js"></script>
+  <script>window.tf || document.write('<script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.22.0/dist/tf.min.js"><\/script>')</script>
+  <script src="vendor/coco-ssd.min.js"></script>
+  <script>window.cocoSsd || document.write('<script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/coco-ssd@2.2.3/dist/coco-ssd.min.js"><\/script>')</script>
+  <script src="comum.js"></script>
+  <script src="lixeira.js"></script>
+</body>
+</html>

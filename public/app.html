@@ -1,0 +1,178 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#0b3d2e">
+  <title>RevitTech · App</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+  <style>
+    body { background: var(--bg); }
+    .app { max-width: 480px; margin: 0 auto; min-height: 100vh; padding: 0 16px 32px; }
+    .tela { animation: surgir .25s; }
+    .cab { display: flex; align-items: center; justify-content: space-between; padding: 16px 0; }
+    .cab .avatar { width: 40px; height: 40px; border-radius: 50%; background: var(--verde-escuro); color: #fff; display: grid; place-items: center; font-weight: 800; font-size: 14px; }
+
+    .hero { background: linear-gradient(150deg, #16a34a, #0b3d2e); color: #fff; border-radius: 24px; padding: 28px 22px; margin: 8px 0 18px; }
+    .hero h1 { font-size: 28px; line-height: 1.15; letter-spacing: -.02em; }
+    .hero p { opacity: .9; margin-top: 8px; }
+
+    label.campo { display: block; font-size: 13px; font-weight: 600; color: var(--muted); margin: 14px 0 6px; }
+    input.txt, select.txt { width: 100%; padding: 14px; border-radius: 12px; border: 1px solid var(--borda); background: #fff; font-size: 16px; color: var(--texto); }
+    input.txt:focus, select.txt:focus { outline: 2px solid var(--verde); border-color: transparent; }
+    .seg { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    .seg button { padding: 12px; border-radius: 12px; background: #fff; border: 1px solid var(--borda); font-weight: 600; color: var(--muted); }
+    .seg button.ativo { border: 2px solid var(--verde); color: var(--verde-escuro); background: var(--verde-claro); }
+
+    .pontos { background: linear-gradient(150deg, #0b3d2e, #14532d); color: #fff; border-radius: 24px; padding: 22px; display: grid; grid-template-columns: 1fr auto; align-items: end; gap: 8px; }
+    .pontos .valor { font-size: 48px; font-weight: 900; line-height: 1; letter-spacing: -.02em; }
+    .pontos .rot { opacity: .8; font-size: 13px; }
+    .pontos .pos { text-align: right; }
+    .pontos .pos b { font-size: 26px; display: block; }
+
+    .scan { margin: 18px 0 10px; padding: 22px; font-size: 19px; border-radius: 18px; box-shadow: 0 8px 24px rgba(22,163,74,.35); }
+    .ou { text-align: center; color: var(--muted); font-size: 13px; margin: 10px 0; }
+    .chips { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; }
+    .chip { padding: 8px 12px; border-radius: 999px; background: #fff; border: 1px solid var(--borda); font-size: 13px; font-weight: 600; }
+    .linha-codigo { display: grid; grid-template-columns: 1fr auto; gap: 8px; margin-top: 10px; }
+
+    .secao { font-size: 13px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; margin: 22px 0 10px; }
+    .hist { display: flex; flex-direction: column; gap: 8px; }
+    .hist-item { display: grid; grid-template-columns: 40px 1fr auto; gap: 10px; align-items: center; background: #fff; border: 1px solid var(--borda); border-radius: 14px; padding: 10px 12px; }
+    .hist-item .ic { font-size: 24px; text-align: center; }
+    .hist-item small { color: var(--muted); }
+    .hist-item .pts { font-weight: 800; color: var(--verde); text-align: right; }
+
+    .lix-card { display: flex; gap: 12px; align-items: center; }
+    .lix-card .ic { width: 48px; height: 48px; border-radius: 14px; background: var(--verde-claro); display: grid; place-items: center; font-size: 26px; }
+    .materiais { display: grid; gap: 10px; }
+    .mat { display: grid; grid-template-columns: 48px 1fr auto; gap: 12px; align-items: center; text-align: left; padding: 14px; border-radius: 16px; background: #fff; border: 2px solid var(--borda); }
+    .mat .ic { font-size: 30px; text-align: center; }
+    .mat small { color: var(--muted); display: block; }
+    .mat .pts { font-weight: 800; color: var(--verde); }
+    .mat.ativo { border-color: var(--verde); background: #f0fdf4; }
+    .stepper { display: grid; grid-template-columns: 64px 1fr 64px; align-items: center; background: #fff; border: 1px solid var(--borda); border-radius: 16px; overflow: hidden; }
+    .stepper button { height: 64px; font-size: 28px; font-weight: 700; background: var(--verde-claro); color: var(--verde-escuro); }
+    .stepper output { text-align: center; font-size: 34px; font-weight: 900; }
+    .resumo { display: flex; justify-content: space-between; margin: 16px 0; padding: 14px; border-radius: 14px; background: var(--verde-claro); color: var(--verde-escuro); font-weight: 600; }
+
+    .grande-ic { font-size: 84px; text-align: center; margin-top: 24px; }
+    .grande-ic.pulsa { animation: pulso 1.2s infinite; }
+    .centro { text-align: center; }
+    .centro h2 { font-size: 26px; margin: 8px 0; }
+    .contador { font-size: 72px; font-weight: 900; text-align: center; font-variant-numeric: tabular-nums; color: var(--verde-escuro); margin: 12px 0 0; }
+    .contador small { font-size: 34px; color: var(--muted); }
+    .ganho { font-size: 44px; font-weight: 900; color: var(--verde); }
+    .passos { text-align: left; margin: 18px 0; display: grid; gap: 8px; }
+    .passos div { display: flex; gap: 10px; align-items: center; background: #fff; border: 1px solid var(--borda); border-radius: 12px; padding: 10px 12px; font-size: 14px; }
+    .passos b { width: 26px; height: 26px; border-radius: 50%; background: var(--verde); color: #fff; display: grid; place-items: center; font-size: 13px; flex: none; }
+  </style>
+</head>
+<body>
+  <div class="app">
+
+    <!-- Cadastro -->
+    <section class="tela" id="tela-cadastro" hidden>
+      <div class="cab"><div class="logo"><span class="marca">♻</span><span>RevitTech<small>OLESC Sustentável</small></span></div></div>
+      <div class="hero">
+        <h1>Recicle, valide e some pontos para sua delegação 🏆</h1>
+        <p>Cada garrafa, lata ou copo depositado nas lixeiras inteligentes vira pontos no ranking da OLESC.</p>
+      </div>
+      <form id="form-cadastro" class="card">
+        <label class="campo" for="nome" style="margin-top:0">Seu nome</label>
+        <input class="txt" id="nome" autocomplete="name" placeholder="Ex.: Maria Silva" required maxlength="40">
+        <label class="campo" for="delegacao">Delegação / escola</label>
+        <select class="txt" id="delegacao" required></select>
+        <label class="campo">Você é</label>
+        <div class="seg" id="tipo">
+          <button type="button" data-v="atleta" class="ativo">🏃 Atleta</button>
+          <button type="button" data-v="torcedor">📣 Torcedor</button>
+        </div>
+        <button class="btn bloco" style="margin-top:20px" type="submit">Começar a reciclar</button>
+      </form>
+    </section>
+
+    <!-- Home -->
+    <section class="tela" id="tela-home" hidden>
+      <div class="cab">
+        <div class="logo"><span class="marca">♻</span><span>RevitTech<small id="h-delegacao">—</small></span></div>
+        <div class="avatar" id="h-avatar" title="Sair">?</div>
+      </div>
+      <div class="pontos">
+        <div><div class="rot">Seus pontos</div><div class="valor" id="h-pontos">0</div><div class="rot" id="h-nome">—</div></div>
+        <div class="pos"><span class="rot">Sua delegação</span><b id="h-posicao">—</b></div>
+      </div>
+      <button class="btn bloco scan" id="btn-scan">📷 Escanear lixeira</button>
+      <input type="file" id="arquivo-qr" accept="image/*" capture="environment" hidden>
+      <div class="ou">ou escolha uma lixeira próxima</div>
+      <div class="chips" id="chips-lixeiras"></div>
+      <form class="linha-codigo" id="form-codigo">
+        <input class="txt" id="codigo" placeholder="Código da lixeira (ex.: GIN-01)" autocapitalize="characters">
+        <button class="btn secundario" type="submit">Ir</button>
+      </form>
+      <div class="secao">Seus depósitos</div>
+      <div class="hist" id="historico"></div>
+    </section>
+
+    <!-- Depósito -->
+    <section class="tela" id="tela-deposito" hidden>
+      <div class="cab">
+        <button class="btn fantasma pequeno" id="btn-voltar">← Voltar</button>
+        <span class="muted" style="font-size:13px">Novo depósito</span>
+      </div>
+      <div class="card lix-card">
+        <div class="ic">🗑️</div>
+        <div style="flex:1"><b id="d-lix-nome">—</b><div class="muted" style="font-size:13px" id="d-lix-local">—</div></div>
+        <span class="selo ok" id="d-lix-id">—</span>
+      </div>
+      <div class="secao">O que você vai descartar?</div>
+      <div class="materiais" id="materiais"></div>
+      <div class="secao">Quantidade</div>
+      <div class="stepper">
+        <button type="button" id="menos">−</button>
+        <output id="qtd">1</output>
+        <button type="button" id="mais">+</button>
+      </div>
+      <div class="resumo"><span>Você pode ganhar</span><span id="d-ganho">—</span></div>
+      <button class="btn bloco" id="btn-liberar" style="padding:18px;font-size:18px">🔓 Liberar lixeira</button>
+      <p class="muted centro" style="font-size:12px;margin-top:10px">A câmera da lixeira vai conferir cada item. Só itens validados geram pontos.</p>
+    </section>
+
+    <!-- Acompanhamento -->
+    <section class="tela" id="tela-acompanhamento" hidden>
+      <div class="grande-ic pulsa">🔓</div>
+      <div class="centro">
+        <h2>Lixeira liberada!</h2>
+        <p class="muted" id="a-instrucao">—</p>
+      </div>
+      <div class="contador"><span id="a-contados">0</span><small> / <span id="a-declarado">0</span></small></div>
+      <p class="muted centro">itens validados pela câmera</p>
+      <div class="passos">
+        <div><b>1</b> Vá até a lixeira <span id="a-lix" style="font-weight:700"></span></div>
+        <div><b>2</b> Passe um item de cada vez pela boca da lixeira</div>
+        <div><b>3</b> Aguarde o ✓ verde na tela da lixeira</div>
+      </div>
+      <button class="btn secundario bloco" id="btn-terminei">Já depositei tudo</button>
+    </section>
+
+    <!-- Resultado -->
+    <section class="tela centro" id="tela-resultado" hidden>
+      <div class="grande-ic" id="r-icone">✅</div>
+      <h2 id="r-titulo">—</h2>
+      <p class="muted" id="r-texto">—</p>
+      <div class="ganho" id="r-pontos">+0 pts</div>
+      <p id="r-co2" style="margin-bottom:24px">—</p>
+      <button class="btn bloco" id="btn-inicio">Voltar ao início</button>
+    </section>
+  </div>
+
+  <div id="toast" class="toast"></div>
+
+  <script src="vendor/jsQR.min.js"></script>
+  <script>window.jsQR || document.write('<script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"><\/script>')</script>
+  <script src="comum.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
