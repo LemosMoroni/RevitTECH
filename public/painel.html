@@ -14,15 +14,18 @@
     .ao-vivo { display: inline-flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 600; color: var(--muted); }
     .ao-vivo i { width: 8px; height: 8px; border-radius: 50%; background: var(--verde); box-shadow: 0 0 0 4px rgba(22,163,74,.2); animation: pulso 1.5s infinite; }
     main { max-width: 1400px; margin: 0 auto; padding: 20px; display: grid; gap: 16px; }
-    .kpis { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
+    /* Itens de grid têm min-width:auto e se recusam a encolher: a tabela larga empurrava
+       a página inteira e criava rolagem horizontal no celular. */
+    main > *, .grade-2 > *, .grade-2b > *, .kpis > * { min-width: 0; }
+    .kpis { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px; }
     .kpi .rot { font-size: 13px; font-weight: 600; color: var(--muted); }
     .kpi .val { font-size: 38px; font-weight: 900; letter-spacing: -.02em; margin: 4px 0 2px; font-variant-numeric: tabular-nums; }
     .kpi .val small { font-size: 18px; font-weight: 700; color: var(--muted); }
     .kpi .det { font-size: 13px; color: var(--muted); }
     .kpi.destaque { background: linear-gradient(140deg, #16a34a, #0b3d2e); color: #fff; border: 0; }
     .kpi.destaque .rot, .kpi.destaque .det, .kpi.destaque .val small { color: #c8f0d6; }
-    .grade-2 { display: grid; grid-template-columns: 1.2fr 1fr; gap: 16px; }
-    .grade-2b { display: grid; grid-template-columns: 1.4fr 1fr; gap: 16px; }
+    .grade-2 { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); gap: 16px; align-items: start; }
+    .grade-2b { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr); gap: 16px; align-items: start; }
 
     .barras { display: grid; gap: 10px; }
     .barra-linha { display: grid; grid-template-columns: 28px 130px 1fr 90px; gap: 10px; align-items: center; font-size: 14px; }
@@ -63,18 +66,40 @@
     .thumb { width: 64px; height: 40px; border-radius: 6px; object-fit: cover; display: block; background: var(--bg); }
     .thumb-vazio { width: 64px; height: 40px; border-radius: 6px; background: var(--bg); display: grid; place-items: center; color: var(--muted); font-size: 11px; }
     .tabela-wrap { overflow-x: auto; }
+    .thumb-vazio { flex-direction: column; gap: 1px; line-height: 1.1; font-size: 10px; text-align: center; cursor: help; border: 1px dashed var(--borda); background: transparent; }
+    .thumb-vazio b { font-size: 14px; opacity: .55; }
+    .rodape-tabela { margin-top: 10px; font-size: 12px; color: var(--muted); text-align: right; }
+
+    .coluna { display: grid; gap: 16px; min-width: 0; align-content: start; }
+    .sub-escala { font-size: 11px; color: var(--muted); margin-top: 10px; }
+
+    /* Gráfico de colunas por hora: série única, marcas finas, eixo recessivo */
+    .grafico { position: relative; }
+    .grafico svg { display: block; width: 100%; height: auto; overflow: visible; }
+    .grafico .base { stroke: var(--borda); stroke-width: 1; }
+    .grafico .grade { stroke: var(--borda); stroke-width: 1; opacity: .6; }
+    .grafico .col { fill: var(--verde); }
+    .grafico .col.vazia { fill: var(--borda); }
+    .grafico .alvo:hover + .col, .grafico .col.ativa { fill: var(--verde-escuro); }
+    .grafico text { font-family: inherit; font-size: 11px; fill: var(--muted); }
+    .grafico .rotulo-max { font-weight: 700; fill: var(--texto); font-size: 12px; }
+    .dica { position: absolute; pointer-events: none; background: var(--texto); color: #fff; font-size: 12px; padding: 6px 9px; border-radius: 8px; white-space: nowrap; transform: translate(-50%, -100%); opacity: 0; transition: opacity .12s; }
+    .dica.on { opacity: 1; }
+    .dica b { display: block; font-size: 13px; }
     .top-atletas { margin-top: 18px; padding-top: 14px; border-top: 1px solid var(--borda); }
     .top-atletas ol { list-style: none; display: grid; gap: 6px; font-size: 14px; }
     .top-atletas li { display: flex; justify-content: space-between; gap: 8px; }
 
     @media (max-width: 1000px) {
-      .kpis { grid-template-columns: repeat(2, 1fr); }
-      .grade-2, .grade-2b, .lixeiras { grid-template-columns: 1fr; }
+      .kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .grade-2, .grade-2b, .lixeiras { grid-template-columns: minmax(0, 1fr); }
     }
     @media (max-width: 520px) {
       main { padding: 12px 16px; }
-      .kpis { grid-template-columns: 1fr; }
-      .barra-linha { grid-template-columns: 22px 90px 1fr 70px; }
+      .kpis { grid-template-columns: minmax(0, 1fr); }
+      .barra-linha { grid-template-columns: 22px 92px minmax(0, 1fr) 44px; gap: 8px; }
+      .topo { padding: 12px 16px; flex-wrap: wrap; row-gap: 6px; }
+      .ao-vivo { font-size: 12px; }
     }
   </style>
 </head>
@@ -86,7 +111,7 @@
 
   <main>
     <section class="kpis">
-      <div class="card kpi destaque"><div class="rot">CO₂e evitado pela reciclagem</div><div class="val" id="k-co2">—</div><div class="det">estimativa · fatores EPA WARM</div></div>
+      <div class="card kpi destaque"><div class="rot">CO₂e evitado pela reciclagem</div><div class="val" id="k-co2">—</div><div class="det" id="k-co2-eq">—</div></div>
       <div class="card kpi"><div class="rot">Itens reciclados e validados</div><div class="val" id="k-itens">—</div><div class="det" id="k-dep">—</div></div>
       <div class="card kpi"><div class="rot">Resíduos desviados do aterro</div><div class="val" id="k-kg">—</div><div class="det" id="k-part">—</div></div>
       <div class="card kpi"><div class="rot">Taxa de validação por visão computacional</div><div class="val" id="k-taxa">—</div><div class="det" id="k-div">—</div></div>
@@ -101,9 +126,15 @@
           <ol id="top-usuarios"></ol>
         </div>
       </div>
-      <div class="card">
-        <h2>♻️ Por material <span class="sub">itens validados</span></h2>
-        <div id="materiais"></div>
+      <div class="coluna">
+        <div class="card">
+          <h2>♻️ Por material <span class="sub">itens validados</span></h2>
+          <div id="materiais"></div>
+        </div>
+        <div class="card">
+          <h2>📈 Itens validados por hora <span class="sub" id="hora-resumo">últimas 12 h</span></h2>
+          <div class="grafico" id="grafico-hora"></div>
+        </div>
       </div>
     </section>
 
@@ -119,7 +150,7 @@
     </section>
 
     <section class="card">
-      <h2>📸 Depósitos em tempo real <span class="sub">com evidência capturada pela câmera</span></h2>
+      <h2>📸 Depósitos em tempo real <span class="sub" id="feed-resumo">—</span></h2>
       <div class="tabela-wrap">
         <table>
           <thead><tr><th>Hora</th><th>Evidência</th><th>Participante</th><th>Lixeira</th><th>Material</th><th style="text-align:right">Declarado</th><th style="text-align:right">Validado</th><th>Status</th><th style="text-align:right">Pontos</th></tr></thead>

@@ -325,6 +325,18 @@ app.get('/api/painel', (req, res) => {
 
   const coletas = db.lixeiras.flatMap((l) => l.coletas.map((c) => ({ ...c, lixeira: l.nome }))).sort((a, b) => b.data - a.data).slice(0, 6);
 
+  // Itens validados por hora, nas últimas 12 horas (para o gráfico de evolução)
+  const UMA_HORA = 3600e3;
+  const horaAtual = Math.floor(Date.now() / UMA_HORA) * UMA_HORA;
+  const porHora = Array.from({ length: 12 }, (_, i) => ({ hora: horaAtual - (11 - i) * UMA_HORA, itens: 0, co2Kg: 0 }));
+  for (const d of finalizados) {
+    const faixa = porHora.find((h) => d.finalizadoEm >= h.hora && d.finalizadoEm < h.hora + UMA_HORA);
+    if (faixa) {
+      faixa.itens += d.validado || 0;
+      faixa.co2Kg += d.co2Kg || 0;
+    }
+  }
+
   res.json({
     kpis: {
       itens: soma(finalizados, 'validado'),
@@ -334,7 +346,11 @@ app.get('/api/painel', (req, res) => {
       depositos: finalizados.length,
       divergencias: finalizados.filter((d) => d.status !== 'concluida').length,
       participantes: new Set(db.depositos.map((d) => d.usuarioId)).size,
+      // equivalência para dar escala ao CO₂e (estimativa: carro de passeio ~0,17 kgCO₂e/km)
+      kmCarro: soma(finalizados, 'co2Kg') / 0.17,
+      comEvidencia: finalizados.filter((d) => d.snapshot).length,
     },
+    porHora,
     porMaterial,
     rankingDelegacoes: rankingDelegacoes(),
     rankingUsuarios: usuarios,
