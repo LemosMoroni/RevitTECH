@@ -27,8 +27,37 @@
     .hud { position: absolute; left: 12px; top: 12px; background: rgba(0,0,0,.55); color: #fff; font-size: 12px; padding: 6px 10px; border-radius: 8px; font-variant-numeric: tabular-nums; }
     .flash { position: absolute; inset: 0; display: grid; place-items: center; font-size: 140px; font-weight: 900; color: #22c55e; text-shadow: 0 4px 30px rgba(0,0,0,.5); opacity: 0; pointer-events: none; }
     .flash.on { animation: flash .9s ease-out; }
+    .flash.neg { color: #ef4444; }
     @keyframes flash { 0% { opacity: 0; transform: scale(.6); } 20% { opacity: 1; transform: scale(1.1); } 100% { opacity: 0; transform: scale(1.3); } }
-    .zona { position: absolute; left: 8%; right: 8%; bottom: 6%; padding: 8px; text-align: center; color: #fff; font-weight: 700; font-size: 14px; letter-spacing: .08em; text-transform: uppercase; background: rgba(0,0,0,.45); border-radius: 10px; }
+    .faixa { position: absolute; left: 8%; right: 8%; bottom: 4%; padding: 8px; text-align: center; color: #fff; font-weight: 700; font-size: 14px; letter-spacing: .08em; text-transform: uppercase; background: rgba(0,0,0,.5); border-radius: 10px; pointer-events: none; }
+    .btn-ajustes { position: absolute; right: 12px; top: 12px; background: rgba(0,0,0,.55); color: #fff; font-size: 13px; font-weight: 600; padding: 7px 12px; border-radius: 8px; }
+    .btn-ajustes:hover { background: rgba(0,0,0,.75); }
+    .aviso-zona { position: absolute; left: 50%; top: 56px; transform: translateX(-50%); background: #0284c7; color: #fff; font-weight: 700; font-size: 14px; padding: 10px 16px; border-radius: 10px; pointer-events: none; white-space: nowrap; }
+
+    .eventos { list-style: none; display: grid; gap: 6px; margin-top: 14px; font-size: 13px; }
+    .eventos li { display: flex; gap: 8px; align-items: center; padding: 7px 10px; border-radius: 8px; background: var(--bg); border-left: 4px solid var(--borda); animation: surgir .25s; }
+    .eventos li span { font-weight: 800; width: 14px; text-align: center; }
+    .eventos .ev-ok { border-color: var(--verde); background: var(--verde-claro); color: #166534; }
+    .eventos .ev-alerta { border-color: var(--amarelo); background: var(--amarelo-claro); color: #92400e; }
+    .eventos .ev-erro { border-color: var(--vermelho); background: var(--vermelho-claro); color: #991b1b; }
+    .eventos .ev-info { border-color: var(--azul); background: #dbeafe; color: #1e40af; }
+    .eventos .ev-vazio { color: var(--muted); justify-content: center; border-left: 0; }
+
+    dialog#dlg-ajustes { margin: auto; border: 0; border-radius: 20px; padding: 24px; width: min(560px, calc(100vw - 32px)); box-shadow: 0 30px 80px rgba(0,0,0,.4); color: var(--texto); }
+    dialog#dlg-ajustes::backdrop { background: rgba(5, 20, 15, .6); }
+    dialog h2 { font-size: 20px; margin-bottom: 4px; }
+    .aj-linha { display: flex; justify-content: space-between; align-items: center; gap: 16px; padding: 14px 0; border-bottom: 1px solid var(--borda); cursor: default; }
+    .aj-linha small { display: block; color: var(--muted); font-size: 12px; margin-top: 2px; }
+    .aj-linha .acoes { display: flex; gap: 6px; flex: none; }
+    .aj-linha input[type=range] { width: 160px; accent-color: var(--verde); }
+    .aj-linha input[type=checkbox] { width: 22px; height: 22px; accent-color: var(--verde); flex: none; }
+    .aj-linha select { padding: 8px; border-radius: 8px; border: 1px solid var(--borda); }
+    .aj-stats { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; margin: 16px 0; }
+    .aj-stats div { background: var(--bg); border-radius: 10px; padding: 8px; text-align: center; }
+    .aj-stats small { display: block; font-size: 11px; color: var(--muted); }
+    .aj-stats b { font-size: 14px; font-variant-numeric: tabular-nums; }
+    .atalhos { font-size: 12px; color: var(--muted); margin-bottom: 14px; }
+    .atalhos kbd { background: var(--bg); border: 1px solid var(--borda); border-radius: 4px; padding: 1px 6px; font-family: inherit; font-weight: 700; }
 
     .painel { display: flex; flex-direction: column; gap: 14px; min-height: 0; overflow: auto; }
     .painel .card { padding: 22px; }
@@ -86,7 +115,9 @@
         <video id="video" autoplay muted playsinline></video>
         <canvas id="overlay"></canvas>
         <div id="hud" class="hud">câmera desligada</div>
-        <div id="zona" class="zona">Boca da lixeira</div>
+        <button id="btn-ajustes" class="btn-ajustes" title="Ajustes da visão computacional (S)">⚙️ Ajustes</button>
+        <div id="aviso-zona" class="aviso-zona" hidden>✏️ Arraste sobre o vídeo para desenhar a zona de depósito · Esc cancela</div>
+        <div id="faixa" class="faixa">Boca da lixeira</div>
         <div id="flash" class="flash">+1</div>
       </div>
     </section>
@@ -114,6 +145,7 @@
         <div class="contador-legenda">itens validados pela câmera</div>
         <div class="tempo"><span>Tempo restante</span><b id="s-tempo">45s</b></div>
         <div class="barra"><i id="s-tempo-barra" style="width:100%"></i></div>
+        <ul class="eventos" id="s-eventos"></ul>
         <button class="btn secundario bloco" id="btn-concluir" style="margin-top:16px">Concluir depósito</button>
       </div>
 
@@ -136,6 +168,38 @@
     </div>
   </div>
 
+  <dialog id="dlg-ajustes">
+    <h2>⚙️ Ajustes da visão computacional</h2>
+    <p class="atalhos">Atalhos: <kbd>S</kbd> ajustes · <kbd>Z</kbd> desenhar zona · <kbd>F</kbd> tela cheia · <kbd>C</kbd> concluir · <kbd>+</kbd> contar manualmente</p>
+
+    <div class="aj-linha">
+      <div><b>Zona de depósito</b><small>A IA analisa só esta área, ampliada. Desenhe sobre a boca da lixeira para detectar melhor.</small></div>
+      <div class="acoes"><button class="btn pequeno" id="aj-desenhar">✏️ Desenhar</button><button class="btn pequeno fantasma" id="aj-inteira">Quadro inteiro</button></div>
+    </div>
+    <div class="aj-linha">
+      <div><b>Confiança mínima · <span id="aj-conf-val">50%</span></b><small>Mais alta: menos falsos positivos. Mais baixa: detecta itens difíceis.</small></div>
+      <input type="range" id="aj-conf" min="30" max="80" step="5">
+    </div>
+    <label class="aj-linha">
+      <div><b>Anti-fraude: exigir descida</b><small>Só conta se o item descer para dentro da lixeira. Mostrar e retirar não conta.</small></div>
+      <input type="checkbox" id="aj-descida">
+    </label>
+    <label class="aj-linha">
+      <div><b>Modo técnico</b><small>Mostra em azul todas as detecções brutas do modelo.</small></div>
+      <input type="checkbox" id="aj-tecnico">
+    </label>
+    <div class="aj-linha">
+      <div><b>Modelo de IA</b><small>Preciso: SSD MobileNet v2 · Rápido: SSDLite, para computadores mais fracos</small></div>
+      <select id="aj-modelo"><option value="">Preciso</option><option value="lite">Rápido</option></select>
+    </div>
+
+    <div class="aj-stats" id="aj-stats"></div>
+    <div style="display:flex;gap:8px">
+      <button class="btn fantasma" id="aj-restaurar" type="button">Restaurar padrão</button>
+      <form method="dialog" style="flex:1"><button class="btn bloco">Fechar</button></form>
+    </div>
+  </dialog>
+
   <div id="toast" class="toast"></div>
 
   <!-- Bibliotecas locais (offline), com fallback para a CDN -->
@@ -144,6 +208,7 @@
   <script src="vendor/coco-ssd.min.js"></script>
   <script>window.cocoSsd || document.write('<script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/coco-ssd@2.2.3/dist/coco-ssd.min.js"><\/script>')</script>
   <script src="comum.js"></script>
+  <script src="rastreador.js"></script>
   <script src="lixeira.js"></script>
 </body>
 </html>

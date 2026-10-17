@@ -6,7 +6,8 @@
   "scripts": {
     "start": "node server.js",
     "reset": "node server.js --reset",
-    "offline": "node scripts/offline.js"
+    "offline": "node scripts/offline.js",
+    "test": "node --test"
   },
   "keywords": [
     "esg",

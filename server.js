@@ -6,7 +6,7 @@ const crypto = require('crypto');
 const QRCode = require('qrcode');
 
 const PORT = process.env.PORT || 3000;
-const DB_FILE = path.join(__dirname, 'data', 'db.json');
+const DB_FILE = process.env.DB_FILE || path.join(__dirname, 'data', 'db.json');
 const SESSAO_EXPIRA_MS = 120 * 1000; // segurança: libera a lixeira se a estação não responder
 const BONUS_DECLARACAO_CORRETA = 5;
 

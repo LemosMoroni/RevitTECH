@@ -64,12 +64,28 @@ Tudo alimenta um **painel ESG em tempo real** com CO₂e evitado, resíduos desv
 
 A detecção roda **no navegador da própria estação**, com [TensorFlow.js](https://www.tensorflow.org/js) e o modelo **COCO-SSD** (SSD MobileNet v2). O vídeo não sai da lixeira; apenas a foto de evidência de cada depósito é enviada ao servidor.
 
-O desafio não é só *ver* uma garrafa, é **contar quantas entraram**. Para isso, a estação conta por evento:
+O desafio não é só *ver* uma garrafa, é **contar quantas entraram de verdade**. A cada quadro, a estação executa este pipeline:
 
-1. Um objeto do material declarado aparece na boca da lixeira com confiança de pelo menos 50%, por **250 ms** ou mais. Isso abre um episódio.
-2. O objeto some do quadro por **700 ms** ou mais, ou seja, caiu na lixeira. Isso fecha o episódio e conta o item.
-3. Se vários itens passam juntos, conta o número máximo de objetos vistos ao mesmo tempo no episódio.
-4. A sessão termina quando a contagem atinge o valor declarado, quando o tempo de 45 s acaba ou quando o participante toca em "Já depositei tudo".
+1. **Zona de depósito com zoom:** só a região da boca da lixeira é recortada e enviada ao modelo. Por padrão é um quadrado central, que evita distorcer o objeto na entrada 300×300 da rede e amplia o item cerca de 1,9×. A zona pode ser redesenhada com o mouse.
+2. **Detecção:** o COCO-SSD encontra os objetos no recorte.
+3. **Rastreamento multi-objeto** ([public/rastreador.js](public/rastreador.js)):
+   - Cada objeto físico vira uma trilha com ID (#1, #2…). A associação entre quadros usa sobreposição (IoU) e, para itens caindo rápido, a distância entre centros.
+   - **Histerese:** a trilha só começa com confiança alta (45%) e se mantém com confiança média (25%), então falhas momentâneas da detecção não duplicam nem perdem itens.
+   - **Votação de classe:** o material é decidido pela soma das confianças ao longo de toda a trilha, não por um único quadro.
+4. **Decisão quando o objeto some da zona:**
+   - ✓ **contado:** é do material declarado e **desceu** para dentro da lixeira.
+   - ↩ **retirado:** foi mostrado e tirado sem cair. É a fraude clássica, e não conta.
+   - ✕ **material diferente:** por exemplo, um celular ou um copo quando o declarado foi PET.
+   - Detecções muito curtas (menos de 3 quadros) são descartadas como ruído.
+5. A sessão termina quando a contagem atinge o valor declarado, quando o tempo de 45 s acaba ou quando o participante toca em "Já depositei tudo". A estação mostra o registro de cada decisão e guarda a foto de evidência do item validado.
+
+O rastreador tem testes automatizados (`npm test`) com quadros simulados: queda normal, item retirado, falhas de detecção, queda rápida, itens simultâneos, material errado e ruído. O fluxo completo também foi validado no Chrome, com uma câmera simulada mostrando a foto de uma garrafa real:
+
+| Cenário | Resultado |
+|---|---|
+| 2 garrafas caindo na lixeira | ✅ 2/2 validadas em ~10 s, confiança de 82–86% |
+| Garrafa mostrada e retirada pela lateral | ❌ 0/2: três eventos "mostrada e retirada" |
+| Desempenho (SSD MobileNet v2, WebGL) | ~11 fps, ~90 ms por inferência |
 
 | Material | Classes COCO aceitas | Pontos por item |
 |---|---|---|
@@ -145,6 +161,7 @@ Outros comandos:
 ```bash
 npm run reset     # recria os dados de demonstração e inicia o servidor
 npm run offline   # baixa a IA (~67 MB) para public/vendor e permite rodar sem internet
+npm test          # testes do rastreador de objetos
 ```
 
 **Usando no celular:** conecte o celular na mesma rede Wi-Fi do computador e escaneie o QR code da página inicial. O terminal também mostra o endereço da rede, por exemplo `http://192.168.0.10:3000`. No Windows, permita o Node.js no firewall quando o sistema pedir.
@@ -154,19 +171,24 @@ npm run offline   # baixa a IA (~67 MB) para public/vendor e permite rodar sem i
 1. No computador com webcam, abra a **estação** (`lixeira.html?id=GIN-01`), clique em **Ativar câmera** e aperte `F` para tela cheia.
 2. No **celular**, abra o app, faça o cadastro e toque em **Escanear lixeira**.
 3. Escolha **Garrafa PET**, quantidade **2**, e toque em **Liberar lixeira**. A estação fica verde.
-4. Passe uma garrafa de cada vez pela frente da câmera. Cada uma que sai do quadro conta **+1**.
-5. **Teste anti-fraude:** declare 3 e passe só 1. O resultado é **divergência** com pontos parciais.
+4. Passe uma garrafa de cada vez pela zona de depósito e **solte-a para baixo**. Cada garrafa que desce e sai da zona conta **+1**.
+5. **Testes anti-fraude:**
+   - Mostre a garrafa e tire pela lateral: aparece "mostrada e retirada: não conta".
+   - Mostre um celular: aparece "material diferente".
+   - Declare 3 e deposite só 1: o resultado é **divergência**, com pontos parciais.
 6. Abra o **painel**: os indicadores, o ranking e a foto de evidência se atualizam sozinhos. Leve uma lixeira a 80% ou mais e registre a coleta.
 
 **Atalhos da estação:**
 
 | Tecla | Ação |
 |---|---|
+| `S` | Ajustes da visão: zona, confiança, anti-fraude, modo técnico e modelo |
+| `Z` | Desenhar a zona de depósito com o mouse |
 | `F` | Tela cheia |
 | `C` | Concluir o depósito agora |
 | `+` | Contar 1 item manualmente (plano B caso a câmera falhe) |
 
-Adicione `&modelo=lite` à URL da estação para usar um modelo mais leve em computadores mais fracos.
+**Dicas para a câmera:** desenhe a zona (`Z`) bem justa na boca da lixeira, com boa iluminação e um fundo liso. Os itens devem passar pela zona e **cair para baixo**. Se a montagem não permitir esse movimento, desative "exigir descida" nos ajustes. Em computadores mais fracos, escolha o modelo "Rápido" nos ajustes.
 
 ## API
 
@@ -198,10 +220,13 @@ RevitTech/
 ├── public/
 │   ├── index.html       # página inicial
 │   ├── app.html/.js     # app do participante (mobile-first)
-│   ├── lixeira.html/.js # estação da lixeira: webcam e visão computacional
+│   ├── lixeira.html/.js # estação da lixeira: webcam, zona de depósito e ajustes
+│   ├── rastreador.js    # rastreamento multi-objeto e decisão anti-fraude
 │   ├── painel.html/.js  # painel ESG e logística reversa
 │   ├── comum.js         # utilitários compartilhados
 │   └── style.css        # estilos
+├── test/
+│   └── rastreador.test.js
 └── docs/img/            # capturas de tela
 ```
 
