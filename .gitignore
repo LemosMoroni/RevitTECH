@@ -31,3 +31,6 @@ runs/
 # Cópias geradas pelos scripts do reciclaveis_yolo (as originais ficam em fotos/ e anotacoes/)
 reciclaveis_yolo/dataset/
 reciclaveis_yolo/fotos_para_anotar/
+
+# Modelo exportado e runtime ONNX (gerados; veja reciclaveis_yolo/README.md)
+reciclaveis_yolo/*.onnx

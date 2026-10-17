@@ -166,7 +166,7 @@
     <div class="caixa">
       <img class="logo-ativar" src="img/logo.png" alt="RevitTech — Tecnologia que renova o futuro.">
       <h2>Ativar lixeira inteligente</h2>
-      <p>A câmera vai validar cada item depositado usando visão computacional (TensorFlow.js · COCO-SSD), rodando localmente no navegador.</p>
+      <p>A câmera vai validar cada item depositado usando visão computacional, rodando localmente no navegador: nenhuma imagem sai da lixeira.</p>
       <button class="btn" id="btn-ativar" style="font-size:20px;padding:18px 32px">📷 Ativar câmera</button>
     </div>
   </div>
@@ -196,8 +196,12 @@
       <input type="checkbox" id="aj-tecnico">
     </label>
     <div class="aj-linha">
-      <div><b>Modelo de IA</b><small>Preciso: SSD MobileNet v2 · Rápido: SSDLite, para computadores mais fracos</small></div>
-      <select id="aj-modelo"><option value="">Preciso</option><option value="lite">Rápido</option></select>
+      <div><b>Modelo de IA</b><small>COCO-SSD generaliza melhor. O RevitTech é treinado por nós, reconhece <b>lata</b> e acerta mais com objeto na mão, mas falha com fundo escuro.</small></div>
+      <select id="aj-modelo">
+        <option value="">COCO-SSD (padrão)</option>
+        <option value="lite">COCO-SSD rápido</option>
+        <option value="revittech">RevitTech (treinado)</option>
+      </select>
     </div>
 
     <div class="aj-stats" id="aj-stats"></div>
@@ -214,7 +218,11 @@
   <script>window.tf || document.write('<script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.22.0/dist/tf.min.js"><\/script>')</script>
   <script src="vendor/coco-ssd.min.js"></script>
   <script>window.cocoSsd || document.write('<script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/coco-ssd@2.2.3/dist/coco-ssd.min.js"><\/script>')</script>
+  <!-- onnxruntime-web executa o modelo treinado; o tfjs acima é a reserva (COCO-SSD) -->
+  <script src="vendor/ort.min.js"></script>
+  <script>window.ort || document.write('<script src="https://cdn.jsdelivr.net/npm/onnxruntime-web@1.23.0/dist/ort.min.js"><\/script>')</script>
   <script src="comum.js"></script>
+  <script src="modelo-revittech.js"></script>
   <script src="rastreador.js"></script>
   <script src="movimento.js"></script>
   <script src="lixeira.js"></script>

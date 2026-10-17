@@ -2,13 +2,20 @@
 const params = new URLSearchParams(location.search);
 const ID = params.get('id') || 'GIN-01';
 const MODELO = params.get('modelo') === 'lite' ? 'lite_mobilenet_v2' : 'mobilenet_v2';
+// NOMES/alvo usam as classes do COCO; o modelo treinado mapeia as dele para essas.
 
 const TEMPO_SESSAO = 45;      // segundos para depositar
 const MS_RESULTADO = 6000;    // tempo exibindo o resultado antes de trancar
 const LADO_RECORTE = 640;     // lado máximo do recorte da zona enviado ao modelo
 
-const NOMES = { bottle: 'garrafa', cup: 'copo/lata', bowl: 'pote', 'cell phone': 'celular', book: 'papel', banana: 'orgânico', apple: 'orgânico', orange: 'orgânico', sandwich: 'orgânico', remote: 'controle', mouse: 'mouse', scissors: 'tesoura', 'sports ball': 'bola', handbag: 'bolsa', backpack: 'mochila', umbrella: 'guarda-chuva', keyboard: 'teclado', clock: 'relógio', vase: 'vaso', 'teddy bear': 'pelúcia', toothbrush: 'escova' };
-const RECICLAVEIS = ['bottle', 'cup'];
+const NOMES = { bottle: 'garrafa', cup: 'copo', lata: 'lata', bowl: 'pote', 'cell phone': 'celular', book: 'papel', banana: 'orgânico', apple: 'orgânico', orange: 'orgânico', sandwich: 'orgânico', remote: 'controle', mouse: 'mouse', scissors: 'tesoura', 'sports ball': 'bola', handbag: 'bolsa', backpack: 'mochila', umbrella: 'guarda-chuva', keyboard: 'teclado', clock: 'relógio', vase: 'vaso', 'teddy bear': 'pelúcia', toothbrush: 'escova' };
+const RECICLAVEIS = ['bottle', 'cup', 'lata'];
+
+// Com o modelo treinado, cada material tem a sua própria classe — nada de confundir lata com copo.
+// Com o COCO-SSD genérico, vale o que o servidor manda (classes amplas, porque ele não tem "lata").
+const ALVO_TREINADO = { pet: ['bottle'], copo: ['cup'], lata: ['lata'] };
+const alvoDaSessao = (s = sessao) =>
+  (s && ((modeloTreinado && ALVO_TREINADO[s.material]) || s.materialInfo.classes)) || [];
 
 // ---------- Configuração da visão (salva por lixeira) ----------
 const CFG_KEY = `revittech_visao_${ID}`;
@@ -43,6 +50,7 @@ const recorte = document.createElement('canvas');
 const rctx = recorte.getContext('2d');
 
 let model = null;
+let modeloTreinado = false;   // true = modelo próprio (reconhece lata); false = COCO-SSD genérico
 let lixeira = null;
 let sessao = null;
 let alvo = [];
@@ -89,7 +97,26 @@ function detectar(fonte) {
 $('qr').src = `/api/lixeiras/${ID}/qrcode`;
 $('codigo').textContent = ID;
 
+// Dois modelos disponíveis:
+//  - COCO-SSD genérico (padrão): generaliza para cenários variados, mas não tem a classe "lata".
+//  - RevitTech (?modelo=revittech): treinado com as nossas 209 fotos. Reconhece lata e acerta
+//    93% das fotos de teste, MAS só no cenário em que foi treinado — numa garrafa sobre fundo
+//    escuro (o interior da lixeira) ele não detecta nada. Precisa de fotos na boca da lixeira
+//    para virar o padrão. Veja reciclaveis_yolo/README.md.
 (async function carregarModelo() {
+  if (params.get('modelo') === 'revittech') {
+    try {
+      $('status-ia-txt').textContent = 'Carregando modelo RevitTech…';
+      model = await ModeloRevitTech.carregar('modelo/revittech.onnx');
+      modeloTreinado = true;
+      $('status-ia').classList.add('pronto');
+      $('status-ia-txt').textContent = 'IA pronta · modelo RevitTech (garrafa, copo e lata)';
+      return;
+    } catch (e) {
+      console.warn('Modelo RevitTech indisponível, usando o COCO-SSD:', e);
+      $('status-ia-txt').textContent = 'Modelo próprio falhou; carregando o genérico…';
+    }
+  }
   try {
     await tf.ready();
     // Tenta o modelo local (offline); se não existir, baixa da CDN do TensorFlow
@@ -104,7 +131,7 @@ $('codigo').textContent = ID;
     aquecer.width = aquecer.height = 300;
     await model.detect(aquecer);
     $('status-ia').classList.add('pronto');
-    $('status-ia-txt').textContent = `IA pronta · ${MODELO === 'mobilenet_v2' ? 'SSD MobileNet v2' : 'SSDLite'} (${tf.getBackend()})`;
+    $('status-ia-txt').textContent = `IA pronta · COCO-SSD (${tf.getBackend()})`;
   } catch (e) {
     console.error(e);
     $('status-ia-txt').textContent = 'Falha ao carregar IA (sem internet?)';
@@ -188,7 +215,7 @@ async function loop() {
     const agora = performance.now();
     fps = fps * 0.85 + (1000 / (agora - ultimoFrame)) * 0.15;
     ultimoFrame = agora;
-    const alvoTxt = sessao ? ` · procurando: ${alvo.map((c) => NOMES[c] || c).join(', ')}` : '';
+    const alvoTxt = sessao ? ` · procurando: ${alvoDaSessao().map((c) => NOMES[c] || c).join(', ')}` : '';
     const movTxt = mov.evento ? ' · ⚡ passagem' : '';
     $('hud').textContent = `IA ${fmtNum(fps)} fps · ${fmtNum(inferMs)} ms · câmera ${fmtNum(fpsCamera)} fps${movTxt}${alvoTxt}`;
     if ($('dlg-ajustes').open) atualizarStats();
@@ -580,7 +607,7 @@ function abrirAjustes() {
   $('aj-descida').checked = cfg.exigirDescida;
   $('aj-tecnico').checked = cfg.tecnico;
   $('aj-movimento').checked = cfg.movimento;
-  $('aj-modelo').value = params.get('modelo') === 'lite' ? 'lite' : '';
+  $('aj-modelo').value = ['lite', 'revittech'].includes(params.get('modelo')) ? params.get('modelo') : '';
   atualizarStats();
   $('dlg-ajustes').showModal();
 }
@@ -627,7 +654,7 @@ $('aj-restaurar').onclick = () => {
 // ---------- Sessão de depósito ----------
 function iniciarSessao(s) {
   sessao = s;
-  alvo = s.materialInfo.classes;
+  alvo = alvoDaSessao(s);
   cont = { contados: 0, manuais: 0, snapshot: null, eventos: [] };
   fimEm = Date.now() + TEMPO_SESSAO * 1000;
   finalizando = false;

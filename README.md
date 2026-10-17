@@ -242,11 +242,17 @@ RevitTech/
 └── docs/img/            # capturas de tela
 ```
 
+## Modelo próprio treinado (em avaliação)
+
+Treinamos um detector YOLO26n com 209 fotos nossas, que **reconhece lata de alumínio** — classe que o COCO-SSD não tem. Ele acerta 93% em fotos de teste do cenário de treino, mas **não generaliza para o interior escuro da lixeira**, onde o COCO-SSD ainda se sai melhor.
+
+Por isso o COCO-SSD segue como padrão, e o modelo treinado pode ser comparado ao vivo em `lixeira.html?modelo=revittech` (ou pelos Ajustes, tecla `S`). O pipeline completo, os números e o caminho para resolver isso estão em [reciclaveis_yolo/](reciclaveis_yolo/README.md).
+
 ## Limitações e próximos passos
 
 Este é um **protótipo de hackathon**. O que evoluiria para produção:
 
-- **Modelo dedicado a resíduos:** o COCO-SSD não tem a classe "lata". O próximo passo é treinar um YOLO no dataset [TACO](http://tacodataset.org/) para reconhecer material, marca e se a embalagem está vazia.
+- **Treinar o modelo próprio com fotos da boca da lixeira**, que é o que falta para ele substituir o COCO-SSD. Depois, considerar o dataset [TACO](http://tacodataset.org/) para reconhecer material, marca e se a embalagem está vazia.
 - **Sensores na lixeira:** célula de carga para pesagem real, sensor de nível e trava eletrônica controlada por ESP32.
 - **Prova de presença:** o QR fixo identifica a lixeira, mas não prova que a pessoa está ali. Um QR dinâmico, renovado a cada sessão, resolveria isso.
 - **Pegada de carbono completa do evento:** incluir o transporte das delegações e a energia dos ginásios, além do CO₂e evitado pela reciclagem.

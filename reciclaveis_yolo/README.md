@@ -29,7 +29,20 @@ Teste de estresse, simulando a boca da lixeira:
 
 Velocidade: **~15 ms por imagem** na CPU.
 
-> **Leia com cuidado:** todas as fotos vêm de um único cenário (um coworking claro) e de poucos objetos — 3 garrafas, 1 copo e 1 lata. O modelo aprendeu bem *essas* condições. Em outro ambiente, com outros objetos, o desempenho deve ser menor. Os números acima **não** são garantia de uso em produção.
+> **Leia com cuidado:** todas as fotos vêm de um único cenário (um coworking claro) e de poucos objetos — 3 garrafas, 1 copo e 1 lata. O modelo aprendeu bem *essas* condições. Os números acima **não** são garantia de uso em produção.
+
+### O limite ficou medido: o modelo não generaliza
+
+Ao integrar o modelo na estação da lixeira, descobrimos onde ele para de funcionar. Com a mesma garrafa, mudando só o cenário:
+
+| Imagem | Modelo RevitTech | COCO-SSD genérico |
+|---|---|---|
+| garrafa segurada no escritório (cenário de treino) | **garrafa_pet 0,93** | nada |
+| garrafa caindo sobre fundo escuro (interior da lixeira) | **nada** | bottle 0,27 |
+
+Os dois modelos são complementares, e cada um só funciona no seu domínio. Por isso o **COCO-SSD continua sendo o padrão** na estação, e o modelo treinado fica disponível em `lixeira.html?modelo=revittech`.
+
+O teste de estresse acima não pegou esse limite porque ele degrada as *mesmas* fotos de escritório — mudar o brilho não muda o cenário. **A correção é coletar fotos na boca da lixeira, com o fundo escuro real, e retreinar.**
 
 ## Como usar
 
@@ -44,7 +57,7 @@ pip install -U ultralytics opencv-python
 python verificar_ambiente.py     # confere a instalação
 ```
 
-O modelo treinado (`modelo_reciclaveis.pt`, 5 MB) **não está no repositório**, assim como os demais arquivos `.pt`. Treine o seu com `python treinar.py` — leva uns 15 minutos.
+Os pesos do PyTorch (`*.pt`) **não estão no repositório**; treine o seu com `python treinar.py`, que leva uns 15 minutos. O modelo já convertido para o navegador está em [`public/modelo/revittech.onnx`](../public/modelo/revittech.onnx), usado pela estação da lixeira quando você escolhe o modelo treinado.
 
 ```bash
 python reconhecer.py     # reconhecimento ao vivo pela webcam (Q sai, + e - ajustam a confiança)
