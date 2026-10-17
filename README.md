@@ -77,18 +77,17 @@ O desafio não é só *ver* uma garrafa, é **contar quantas entraram de verdade
    - **Histerese:** a trilha só começa com confiança alta (45%) e se mantém com confiança média (25%), então falhas momentâneas da detecção não duplicam nem perdem itens.
    - **Votação de classe:** o material é decidido pela soma das confianças ao longo de toda a trilha, não por um único quadro.
 4. **Decisão quando o objeto some da zona:**
-   - ✓ **contado:** é do material declarado e **desceu** para dentro da lixeira.
-   - ↩ **retirado:** foi mostrado e tirado sem cair. É a fraude clássica, e não conta.
-   - ✕ **material diferente:** por exemplo, um celular ou um copo quando o declarado foi PET.
+   - ✓ **contado:** é do material declarado e passou pela zona de depósito.
+   - ✕ **material diferente:** por exemplo, um celular quando o declarado foi PET.
    - Detecções muito curtas (menos de 3 quadros) são descartadas como ruído.
 5. A sessão termina quando a contagem atinge o valor declarado, quando o tempo de 45 s acaba ou quando o participante toca em "Já depositei tudo". A estação mostra o registro de cada decisão e guarda a foto de evidência do item validado.
 
-O rastreador tem testes automatizados (`npm test`) com quadros simulados: queda normal, item retirado, falhas de detecção, queda rápida, itens simultâneos, material errado e ruído. O fluxo completo também foi validado no Chrome, com uma câmera simulada mostrando a foto de uma garrafa real:
+O rastreador tem testes automatizados (`npm test`) com quadros simulados: queda normal, falhas de detecção, queda rápida, itens simultâneos, material errado e ruído. O fluxo completo também foi validado no Chrome, com uma câmera simulada mostrando a foto de uma garrafa real:
 
 | Cenário | Resultado |
 |---|---|
-| 2 garrafas caindo na lixeira | ✅ 2/2 validadas em ~10 s, confiança de 82–86% |
-| Garrafa mostrada e retirada pela lateral | ❌ 0/2: três eventos "mostrada e retirada" |
+| 3 garrafas caindo na boca da lixeira | ✅ 3/3 validadas, decisão ~180 ms após cada passagem |
+| A mesma garrafa passada várias vezes (entra e volta) | ✅ 3/3: cada passagem conta |
 | Desempenho (SSD MobileNet v2, WebGL) | ~11 fps, ~90 ms por inferência |
 
 | Material | Classes COCO aceitas | Pontos por item |
@@ -181,9 +180,8 @@ Quem abrir o endereço HTTP antigo é redirecionado automaticamente.
 1. No computador com webcam, abra a **estação** (`lixeira.html?id=GIN-01`), clique em **Ativar câmera** e aperte `F` para tela cheia.
 2. No **celular**, abra o app, faça o cadastro e toque em **Escanear lixeira**.
 3. Escolha **Garrafa PET**, quantidade **2**, e toque em **Liberar lixeira**. A estação fica verde.
-4. Passe uma garrafa de cada vez pela zona de depósito e **solte-a para baixo**. Cada garrafa que desce e sai da zona conta **+1**.
+4. Passe uma garrafa de cada vez pela zona de depósito. Cada passagem reconhecida conta **+1** (dá para usar a mesma garrafa várias vezes).
 5. **Testes anti-fraude:**
-   - Mostre a garrafa e tire pela lateral: aparece "mostrada e retirada: não conta".
    - Mostre um celular: aparece "material diferente".
    - Declare 3 e deposite só 1: o resultado é **divergência**, com pontos parciais.
 6. Abra o **painel**: os indicadores, o ranking e a foto de evidência se atualizam sozinhos. Leve uma lixeira a 80% ou mais e registre a coleta.
@@ -192,13 +190,13 @@ Quem abrir o endereço HTTP antigo é redirecionado automaticamente.
 
 | Tecla | Ação |
 |---|---|
-| `S` | Ajustes da visão: zona, confiança, anti-fraude, modo técnico e modelo |
+| `S` | Ajustes da visão: zona, confiança, passagem rápida, modo técnico e modelo |
 | `Z` | Desenhar a zona de depósito com o mouse |
 | `F` | Tela cheia |
 | `C` | Concluir o depósito agora |
 | `+` | Contar 1 item manualmente (plano B caso a câmera falhe) |
 
-**Dicas para a câmera:** desenhe a zona (`Z`) bem justa na boca da lixeira, com boa iluminação e um fundo liso. Os itens devem passar pela zona e **cair para baixo**. Se a montagem não permitir esse movimento, desative "exigir descida" nos ajustes. Em computadores mais fracos, escolha o modelo "Rápido" nos ajustes.
+**Dicas para a câmera:** desenhe a zona (`Z`) bem justa na boca da lixeira, com boa iluminação e um fundo liso. Em computadores mais fracos, escolha o modelo "Rápido" nos ajustes.
 
 ## API
 

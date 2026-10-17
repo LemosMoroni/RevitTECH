@@ -21,7 +21,7 @@ const alvoDaSessao = (s = sessao) =>
 const CFG_KEY = `revittech_visao_${ID}`;
 // zona: null = automática (quadrado central: sem distorção na entrada 300×300 do modelo e com zoom)
 // movimento: gatilho por passagem (câmera na boca da lixeira, itens caindo rápido)
-const CFG_PADRAO = { zona: null, confianca: 0.45, exigirDescida: true, tecnico: false, movimento: true };
+const CFG_PADRAO = { zona: null, confianca: 0.45, tecnico: false, movimento: true };
 
 function carregarCfg() {
   try {
@@ -37,7 +37,9 @@ function salvarCfg() {
   try { localStorage.setItem(CFG_KEY, JSON.stringify(cfg)); } catch {}
   rastreador.configurar(opcoesRastreador());
 }
-const opcoesRastreador = () => ({ scoreNovo: cfg.confianca, scoreManter: Math.max(0.2, cfg.confianca - 0.2), exigirDescida: cfg.exigirDescida });
+// Sem bloqueio de "entrou e voltou": todo item reconhecido que passa pela zona conta,
+// inclusive o mesmo objeto passado de novo.
+const opcoesRastreador = () => ({ scoreNovo: cfg.confianca, scoreManter: Math.max(0.2, cfg.confianca - 0.2), exigirDescida: false });
 
 let cfg = carregarCfg();
 const rastreador = new Rastreador(opcoesRastreador());
@@ -429,7 +431,7 @@ async function analisarPassagem(ev) {
     window.__ultimaPassagem = ev; // depuração (modo técnico / testes)
     if (!sessao || sessao.id !== sessaoId || finalizando) return;
     // passagem já confirmada pelo movimento: aceita confiança um pouco menor (itens caindo ficam borrados)
-    const r = decidirPassagem(ev, alvo, { confianca: cfg.confianca * 0.85, exigirDescida: cfg.exigirDescida });
+    const r = decidirPassagem(ev, alvo, { confianca: cfg.confianca * 0.85, exigirDescida: false });
     tratarPassagem(ev, r, Date.now() - ev.fim, reanalisados);
   } catch (e) {
     console.error(e);
@@ -447,10 +449,6 @@ function tratarPassagem(ev, r, latencia, reanalisados) {
     cont.snapshot = evidencia(ev, r.melhor) || cont.snapshot;
     evento('ok', '✓', `${r.quantidade > 1 ? `${r.quantidade}× ` : ''}${nome} entrou na lixeira · ${pct}% · ${rapido}`);
     contar(r.quantidade);
-  } else if (r.decisao === 'retirado') {
-    evento('alerta', '↩', `${nome} entrou e voltou: não conta · ${rapido}`);
-    piscar('✕', 'neg');
-    som('aviso');
   } else if (r.decisao === 'material') {
     evento('erro', '✕', `${nome}: não é ${sessao.materialInfo.nome.toLowerCase()} · ${rapido}`);
     piscar('✕', 'neg');
@@ -490,10 +488,6 @@ function tratarFinalizado({ trilha, decisao, classe, score }) {
     if (trilha.snapshot) cont.snapshot = trilha.snapshot;
     evento('ok', '✓', `#${trilha.id} ${nome} entrou na lixeira · ${pct}%`);
     contar(1);
-  } else if (decisao === 'retirado') {
-    evento('alerta', '↩', `#${trilha.id} ${nome} foi mostrada e retirada: não conta`);
-    piscar('✕', 'neg');
-    som('aviso');
   } else if (decisao === 'material') {
     evento('erro', '✕', `#${trilha.id} ${nome}: não é ${sessao.materialInfo.nome.toLowerCase()}`);
     piscar('✕', 'neg');
@@ -604,7 +598,6 @@ canvas.addEventListener('pointerup', () => {
 function abrirAjustes() {
   $('aj-conf').value = Math.round(cfg.confianca * 100);
   $('aj-conf-val').textContent = `${Math.round(cfg.confianca * 100)}%`;
-  $('aj-descida').checked = cfg.exigirDescida;
   $('aj-tecnico').checked = cfg.tecnico;
   $('aj-movimento').checked = cfg.movimento;
   $('aj-modelo').value = ['lite', 'revittech'].includes(params.get('modelo')) ? params.get('modelo') : '';
@@ -630,7 +623,6 @@ $('aj-conf').oninput = (e) => {
   $('aj-conf-val').textContent = `${e.target.value}%`;
   salvarCfg();
 };
-$('aj-descida').onchange = (e) => { cfg.exigirDescida = e.target.checked; salvarCfg(); };
 $('aj-tecnico').onchange = (e) => { cfg.tecnico = e.target.checked; salvarCfg(); };
 $('aj-movimento').onchange = (e) => { cfg.movimento = e.target.checked; salvarCfg(); };
 $('aj-modelo').onchange = (e) => {
