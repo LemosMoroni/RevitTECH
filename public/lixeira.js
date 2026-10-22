@@ -13,7 +13,14 @@ const RECICLAVEIS = ['bottle', 'cup', 'lata'];
 
 // Com o modelo treinado, cada material tem a sua própria classe — nada de confundir lata com copo.
 // Com o COCO-SSD genérico, vale o que o servidor manda (classes amplas, porque ele não tem "lata").
-const ALVO_TREINADO = { pet: ['bottle'], copo: ['cup'], lata: ['lata'] };
+// Copo declarado também aceita "lata": o modelo treinado confunde copo branco com lata
+// em condições diferentes das do treino. O contrário NÃO vale — declarar lata (15 pts) e
+// depositar copo (5 pts) daria pontos a mais; declarar copo e depositar lata não dá vantagem.
+const ALVO_TREINADO = { pet: ['bottle'], copo: ['cup', 'lata'], lata: ['lata'] };
+
+// Nome mostrado no evento: deixa visível quando o copo foi aceito tendo sido lido como lata
+const nomeNoEvento = (classe) =>
+  sessao?.material === 'copo' && classe === 'lata' ? 'copo (o modelo leu lata)' : (NOMES[classe] || classe);
 const alvoDaSessao = (s = sessao) =>
   (s && ((modeloTreinado && ALVO_TREINADO[s.material]) || s.materialInfo.classes)) || [];
 
@@ -442,7 +449,7 @@ async function analisarPassagem(ev) {
 }
 
 function tratarPassagem(ev, r, latencia, reanalisados) {
-  const nome = NOMES[r.classe] || r.classe;
+  const nome = nomeNoEvento(r.classe);
   const pct = Math.round((r.score || 0) * 100);
   const rapido = `⚡ ${fmtNum(latencia)} ms${reanalisados ? ` · ${reanalisados} quadro(s) do buffer` : ''}`;
   if (r.decisao === 'contado') {
@@ -482,7 +489,7 @@ function evidencia(ev, det) {
 
 // ---------- Decisões do rastreador ----------
 function tratarFinalizado({ trilha, decisao, classe, score }) {
-  const nome = NOMES[classe] || classe;
+  const nome = nomeNoEvento(classe);
   const pct = Math.round(score * 100);
   if (decisao === 'contado') {
     if (trilha.snapshot) cont.snapshot = trilha.snapshot;
